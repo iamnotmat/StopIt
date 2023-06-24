@@ -1,20 +1,9 @@
-//
-// Copyright 2020-2023 Picovoice Inc.
-//
-// You may not use this file except in compliance with the license. A copy of the license is located in the "LICENSE"
-// file accompanying this source.
-//
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
-// an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
-// specific language governing permissions and limitations under the License.
-//
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter_picker/flutter_picker.dart';
 import 'package:porcupine_flutter/porcupine.dart';
 import 'package:porcupine_flutter/porcupine_manager.dart';
 import 'package:porcupine_flutter/porcupine_error.dart';
@@ -34,9 +23,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  late String _language;
   late List<String> _keywords;
-  final Map<String, BuiltInKeyword> _keywordMap = {};
 
   bool isError = false;
   String errorMessage = "";
@@ -46,7 +33,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   Color detectionColour = Color(0xff00e5c3);
   Color defaultColour = Color(0xfff5fcff);
   Color? backgroundColour;
-  String currentKeyword = "Click to choose a keyword";
+  String currentKeyword = "StopIt";
   PorcupineManager? _porcupineManager;
 
   @override
@@ -56,15 +43,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       isButtonDisabled = true;
       backgroundColour = defaultColour;
     });
-    WidgetsBinding.instance?.addObserver(this);
+    WidgetsBinding.instance.addObserver(this);
 
-    _initializeKeywordMap();
-    _loadParams();
+    loadNewKeyword(currentKeyword);
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance?.removeObserver(this);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -77,42 +63,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _loadParams() async {
-    try {
-      final paramsString =
-          await DefaultAssetBundle.of(context).loadString('assets/params.json');
-      final params = json.decode(paramsString);
-
-      String language = params["language"];
-      List<String> keywords = List<String>.from(params["keywords"]);
-      if (language == "en") {
-        for (var builtIn in BuiltInKeyword.values) {
-          String keyword = builtIn
-              .toString()
-              .split(".")
-              .last
-              .replaceAll("_", " ")
-              .toLowerCase();
-          keywords.add(keyword);
-        }
-      }
-
-      _language = language;
-      _keywords = keywords;
-    } catch (_) {
-      errorCallback(PorcupineException(
-          "Could not find `params.json`. Ensure 'prepare_demo.dart' script was run before launching the demo."));
-    }
-  }
-
+// Load new keyword
   Future<void> loadNewKeyword(String keyword) async {
     setState(() {
       isButtonDisabled = true;
     });
-
-    if (!_keywords.contains(keyword)) {
-      return;
-    }
 
     if (isProcessing) {
       await _stopProcessing();
@@ -123,25 +78,18 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       _porcupineManager = null;
     }
     try {
-      // if (_language == "en") {
-      //   BuiltInKeyword builtIn = _keywordMap[keyword]!;
-
-      //   _porcupineManager = await PorcupineManager.fromBuiltInKeywords(
-      //       accessKey, [builtIn], wakeWordCallback,
-      //       errorCallback: errorCallback);
-      // } else {
       var platform = (Platform.isAndroid) ? "android" : "ios";
       var keywordPath = "assets/keywords/$platform/${keyword}_$platform.ppn";
 
       _porcupineManager = await PorcupineManager.fromKeywordPaths(
           accessKey, [keywordPath], wakeWordCallback);
-      // }
 
       setState(() {
-        currentKeyword = keyword;
         isError = false;
       });
-    } on PorcupineInvalidArgumentException catch (ex) {
+    }
+    // Catch errors
+    on PorcupineInvalidArgumentException catch (ex) {
       errorCallback(PorcupineInvalidArgumentException(
           "${ex.message}\nEnsure your accessKey '$accessKey' is a valid access key."));
     } on PorcupineActivationException {
@@ -164,19 +112,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
   }
 
-  void wakeWordCallback(int keywordIndex) {
-    if (keywordIndex >= 0) {
-      setState(() {
-        backgroundColour = detectionColour;
-      });
-      Future.delayed(const Duration(milliseconds: 1000), () {
-        setState(() {
-          backgroundColour = defaultColour;
-        });
-      });
-    }
-  }
-
+// Function called when an error occurs
   void errorCallback(PorcupineException error) {
     setState(() {
       isError = true;
@@ -184,6 +120,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     });
   }
 
+// Function called when the start button is pressed
   Future<void> _startProcessing() async {
     setState(() {
       isButtonDisabled = true;
@@ -207,6 +144,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
   }
 
+// Stop processing
   Future<void> _stopProcessing() async {
     setState(() {
       isButtonDisabled = true;
@@ -220,85 +158,34 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     });
   }
 
-  void _toggleProcessing() async {
-    if (isProcessing) {
-      await _stopProcessing();
-    } else {
-      await _startProcessing();
-    }
-  }
+// Build start button
+  buildStartButton(BuildContext context) {
+    final ButtonStyle buttonStyle = ElevatedButton.styleFrom(
+      primary: picoBlue,
+      shape: CircleBorder(),
+      textStyle: TextStyle(color: Colors.white),
+    );
 
-  void _initializeKeywordMap() {
-    for (var builtIn in BuiltInKeyword.values) {
-      String keyword =
-          builtIn.toString().split(".").last.replaceAll("_", " ").toLowerCase();
-      _keywordMap[keyword] = builtIn;
-    }
-  }
-
-  Color picoBlue = Color.fromRGBO(55, 125, 255, 1);
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        key: _scaffoldKey,
-        backgroundColor: backgroundColour,
-        appBar: AppBar(
-          title: const Text('Porcupine Demo'),
-          backgroundColor: picoBlue,
-        ),
-        body: Column(
-          children: [
-            buildPicker(context),
-            buildStartButton(context),
-            buildErrorMessage(context),
-            footer
-          ],
+    return Expanded(
+      flex: 2,
+      child: Container(
+        child: SizedBox(
+          width: 150,
+          height: 150,
+          child: ElevatedButton(
+            style: buttonStyle,
+            onPressed: isProcessing ? _stopProcessing : _startProcessing,
+            child: Text(
+              isProcessing ? "Stop" : "Start",
+              style: TextStyle(fontSize: 30),
+            ),
+          ),
         ),
       ),
     );
   }
 
-  buildPicker(BuildContext context) {
-    return Expanded(
-      flex: 1,
-      child: Container(
-          alignment: Alignment.bottomCenter,
-          // color: Colors.blue,
-          child: FractionallySizedBox(
-              widthFactor: 0.9,
-              child: OutlinedButton(
-                child: Text(currentKeyword.toString(),
-                    style: TextStyle(fontSize: 20, color: picoBlue)),
-                onPressed: () {
-                  showPicker(context);
-                },
-              ))),
-    );
-  }
-
-  buildStartButton(BuildContext context) {
-    final ButtonStyle buttonStyle = ElevatedButton.styleFrom(
-        primary: picoBlue,
-        shape: CircleBorder(),
-        textStyle: TextStyle(color: Colors.white));
-
-    return Expanded(
-      flex: 2,
-      child: Container(
-          child: SizedBox(
-              width: 150,
-              height: 150,
-              child: ElevatedButton(
-                style: buttonStyle,
-                onPressed:
-                    (isButtonDisabled || isError) ? null : _toggleProcessing,
-                child: Text(isProcessing ? "Stop" : "Start",
-                    style: TextStyle(fontSize: 30)),
-              ))),
-    );
-  }
-
+// Build error message
   buildErrorMessage(BuildContext context) {
     return Expanded(
         flex: 1,
@@ -317,25 +204,50 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                   )));
   }
 
-  Widget footer = Expanded(
-      flex: 1,
-      child: Container(
-          alignment: Alignment.bottomCenter,
-          padding: EdgeInsets.only(bottom: 20),
-          child: const Text(
-            "Made in Vancouver, Canada by Picovoice",
-            style: TextStyle(color: Color(0xff666666)),
-          )));
-
-  showPicker(BuildContext context) {
-    Picker picker = Picker(
-        adapter: PickerDataAdapter<String>(pickerData: _keywords.toList()),
-        changeToFirst: true,
-        textAlign: TextAlign.left,
-        columnPadding: const EdgeInsets.all(8.0),
-        onConfirm: (Picker picker, List value) {
-          loadNewKeyword(picker.getSelectedValues()[0]);
+  String detectedWord = "";
+// Function called when wake word is detected
+  void wakeWordCallback(int keywordIndex) {
+    if (keywordIndex >= 0) {
+      setState(() {
+        backgroundColour = detectionColour;
+        detectedWord = "Mannaccia a te";
+      });
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        setState(() {
+          backgroundColour = defaultColour;
+          detectedWord = "";
         });
-    picker.show(_scaffoldKey.currentState!);
+      });
+    }
+  }
+
+// Build page
+  Color picoBlue = Color.fromRGBO(55, 125, 255, 1);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: backgroundColour,
+        appBar: AppBar(
+          title: const Text('Porcupine Demo'),
+          backgroundColor: picoBlue,
+        ),
+        body: Column(
+          children: [
+            buildStartButton(context),
+            buildErrorMessage(context),
+            SizedBox(
+                height:
+                    20), // Add a spacing between the existing widgets and the detected word
+            Text(
+              detectedWord, // Display the detected word
+              style: TextStyle(fontSize: 24),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
