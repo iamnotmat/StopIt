@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'database_helper.dart';
+import 'edit_workout.dart';
 
 void main() {
   runApp(MyApp());
@@ -9,348 +10,215 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Workout App',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: WorkoutDesignPage(),
+      home: MainWidget(),
     );
   }
 }
 
-class WorkoutDesignPage extends StatefulWidget {
+List<Workout> workouts = [];
+
+class MainWidget extends StatefulWidget {
   @override
-  _WorkoutDesignPageState createState() => _WorkoutDesignPageState();
+  _MainWidgetState createState() => _MainWidgetState();
 }
 
-class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
-  List<Set> sets = [];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Workout Design'),
-      ),
-      body: ReorderableListView(
-        padding: EdgeInsets.symmetric(vertical: 10),
-        children: sets
-            .asMap()
-            .map((index, set) => MapEntry(
-                  index,
-                  SetWidget(
-                    key: ValueKey(index),
-                    set: set,
-                    onDelete: () {
-                      setState(() {
-                        sets.removeAt(index);
-                      });
-                    },
-                  ),
-                ))
-            .values
-            .toList(),
-        onReorder: (oldIndex, newIndex) {
-          setState(() {
-            if (newIndex > oldIndex) {
-              newIndex -= 1;
-            }
-            final Set set = sets.removeAt(oldIndex);
-            sets.insert(newIndex, set);
-          });
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          setState(() {
-            sets.add(Set());
-          });
-        },
-        child: Icon(Icons.add),
-      ),
-    );
-  }
-}
-
-class Set {
-  String name = '';
-  List<Interval> intervals = [];
-  int repetitions = 1;
-
-  Set({this.name = '', this.repetitions = 1});
-}
-
-class Interval {
-  String name = '';
-  IntervalType type;
-  int duration; // in seconds
-  int reps;
-  int repetitions = 1;
-
-  Interval({
-    this.type = IntervalType.time,
-    this.duration = 0,
-    this.reps = 0,
-    this.name = '',
-    this.repetitions = 1,
-  });
-}
-
-enum IntervalType {
-  time,
-  reps,
-}
-
-class SetWidget extends StatefulWidget {
-  final Set set;
-  final VoidCallback onDelete;
-
-  const SetWidget({Key? key, required this.set, required this.onDelete})
-      : super(key: key);
-
-  @override
-  _SetWidgetState createState() => _SetWidgetState();
-}
-
-class _SetWidgetState extends State<SetWidget> {
-  TextEditingController _nameController = TextEditingController();
-  TextEditingController _repetitionsController = TextEditingController();
-
+class _MainWidgetState extends State<MainWidget> {
   @override
   void initState() {
     super.initState();
-    _nameController.text = widget.set.name;
-    _repetitionsController.text = widget.set.repetitions.toString();
+  }
+
+  void addWorkout() {
+    setState(() {
+      workouts.add(Workout(
+        key: UniqueKey(),
+        index: workouts.length, // Assign the index of the workout
+        removeWorkout: removeWorkout,
+        name: 'Workout ${workouts.length}',
+      ));
+    });
+  }
+
+  void removeWorkout(Workout workout) {
+    setState(() {
+      workouts.remove(workout);
+    });
+  }
+
+  void onReorder(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) {
+        newIndex -= 1;
+      }
+      final workout = workouts.removeAt(oldIndex);
+      workouts.insert(newIndex, workout);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      key: widget.key,
-      margin: EdgeInsets.all(10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ListTile(
-            title: TextFormField(
-              controller: _nameController,
-              onChanged: (value) {
-                setState(() {
-                  widget.set.name = value;
-                });
-              },
-              decoration: InputDecoration(
-                labelText: 'Set Name',
-              ),
-            ),
-            trailing: IconButton(
-              icon: Icon(Icons.delete),
-              onPressed: widget.onDelete,
-            ),
-          ),
-          Row(
-            children: [
-              Text('Repetitions:'),
-              SizedBox(width: 10),
-              Expanded(
-                child: TextFormField(
-                  controller: _repetitionsController,
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) {
-                    setState(() {
-                      widget.set.repetitions = int.tryParse(value) ?? 1;
-                    });
-                  },
-                ),
-              ),
-            ],
-          ),
-          ReorderableListView(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            padding: EdgeInsets.zero,
-            children: widget.set.intervals
-                .asMap()
-                .map((index, interval) => MapEntry(
-                      index,
-                      IntervalWidget(
-                        key: ValueKey(index),
-                        interval: interval,
-                        onDelete: () {
-                          setState(() {
-                            widget.set.intervals.removeAt(index);
-                          });
-                        },
-                      ),
-                    ))
-                .values
-                .toList(),
-            onReorder: (oldIndex, newIndex) {
-              setState(() {
-                if (newIndex > oldIndex) {
-                  newIndex -= 1;
-                }
-                final Interval interval =
-                    widget.set.intervals.removeAt(oldIndex);
-                widget.set.intervals.insert(newIndex, interval);
-              });
-            },
-          ),
-          Padding(
-            padding: EdgeInsets.all(10),
-            child: ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  widget.set.intervals.add(Interval(type: IntervalType.time));
-                });
-              },
-              child: Text('Add Interval'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class IntervalWidget extends StatefulWidget {
-  final Interval interval;
-  final VoidCallback onDelete;
-
-  const IntervalWidget(
-      {Key? key, required this.interval, required this.onDelete})
-      : super(key: key);
-
-  @override
-  _IntervalWidgetState createState() => _IntervalWidgetState();
-}
-
-class _IntervalWidgetState extends State<IntervalWidget> {
-  IntervalType selectedIntervalType = IntervalType.time;
-  TextEditingController _nameController = TextEditingController();
-  TextEditingController _durationController = TextEditingController();
-  TextEditingController _repsController = TextEditingController();
-  TextEditingController _repetitionsController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    selectedIntervalType = widget.interval.type;
-    _nameController.text = widget.interval.name;
-    _durationController.text = widget.interval.duration.toString();
-    _repsController.text = widget.interval.reps.toString();
-    _repetitionsController.text = widget.interval.repetitions.toString();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      key: widget.key,
-      margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-      child: Padding(
-        padding: EdgeInsets.all(10),
+    return Material(
+      type: MaterialType.transparency,
+      child: Container(
+        padding: EdgeInsets.all(16.0),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Color(0xff252525),
+        ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ListTile(
-              title: TextFormField(
-                controller: _nameController,
-                onChanged: (value) {
-                  setState(() {
-                    widget.interval.name = value;
-                  });
-                },
-                decoration: InputDecoration(
-                  labelText: 'Interval Name',
-                ),
-              ),
-            ),
-            Row(
-              children: [
-                Text('Interval Type:'),
-                SizedBox(width: 10),
-                DropdownButton<IntervalType>(
-                  value: selectedIntervalType,
-                  onChanged: (IntervalType? newValue) {
-                    setState(() {
-                      selectedIntervalType = newValue!;
-                      widget.interval.type = newValue;
-                    });
-                  },
-                  items: IntervalType.values.map((IntervalType type) {
-                    return DropdownMenuItem<IntervalType>(
-                      value: type,
-                      child: Text(type.toString().split('.').last),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-            SizedBox(height: 10),
-            if (selectedIntervalType == IntervalType.time)
-              Row(
+            Container(
+              height:
+                  100, // Adjust the height as needed for the logo and settings wheel
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Duration (seconds):'),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _durationController,
-                      keyboardType: TextInputType.number,
-                      onChanged: (value) {
-                        setState(() {
-                          widget.interval.duration = int.tryParse(value) ?? 0;
-                        });
-                      },
-                    ),
+                  // Add your logo widget here
+                  Icon(
+                    Icons.ac_unit, // Replace with your logo icon
+                    size: 50,
+                    color: Colors.white,
                   ),
-                ],
-              ),
-            if (selectedIntervalType == IntervalType.reps)
-              Row(
-                children: [
-                  Text('Reps:'),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _repsController,
-                      keyboardType: TextInputType.number,
-                      onChanged: (value) {
-                        setState(() {
-                          widget.interval.reps = int.tryParse(value) ?? 0;
-                        });
-                      },
+                  // Add your settings wheel widget here
+                  IconButton(
+                    icon: Icon(
+                      Icons.settings,
+                      color: Colors.white,
                     ),
-                  ),
-                ],
-              ),
-            Row(
-              children: [
-                Text('Repetitions:'),
-                SizedBox(width: 10),
-                Expanded(
-                  child: TextFormField(
-                    controller: _repetitionsController,
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) {
-                      setState(() {
-                        widget.interval.repetitions = int.tryParse(value) ?? 1;
-                      });
+                    onPressed: () {
+                      // Handle settings button press
                     },
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton(
-                  icon: Icon(Icons.delete),
-                  onPressed: widget.onDelete,
+            SizedBox(
+                height: 16.0), // Add spacing between the header and the list
+            Expanded(
+              child: ReorderableListView(
+                onReorder: onReorder,
+                children: workouts.map((workout) {
+                  return workout;
+                }).toList(),
+              ),
+            ),
+            SizedBox(
+                height: 16.0), // Add spacing between the list and the button
+            SizedBox(
+              width: double.infinity, // Make the button occupy the entire width
+              child: ElevatedButton(
+                onPressed: addWorkout,
+                child: Text(
+                  'Add Workout',
+                  style: TextStyle(
+                    fontSize: 16.0,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[850],
+                  ),
                 ),
-              ],
+                style: ElevatedButton.styleFrom(
+                  primary: Colors.orange[900],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20.0),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class Workout extends StatefulWidget {
+  Workout({
+    Key? key,
+    required this.index,
+    required this.removeWorkout,
+    required this.name,
+  }) : super(key: key);
+
+  final int index;
+  final String name;
+  List<Set> sets = [];
+  final Function(Workout) removeWorkout;
+
+  @override
+  _WorkoutState createState() => _WorkoutState();
+}
+
+class _WorkoutState extends State<Workout> {
+  bool isExpanded = false;
+
+  void editWorkout(BuildContext context, int index) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (context) => WorkoutDesignPage(workoutKey: widget.key)),
+    );
+  }
+
+  void toggleExpansion() {
+    setState(() {
+      isExpanded = !isExpanded;
+    });
+  }
+
+  void removeWorkout() {
+    widget.removeWorkout(this.widget);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: widget.key,
+      margin: EdgeInsets.all(8.0),
+      padding: EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.orange[800],
+        borderRadius: BorderRadius.circular(20.0),
+      ),
+      child: Column(
+        children: [
+          GestureDetector(
+            onTap: toggleExpansion,
+            child: Row(
+              children: [
+                Icon(
+                  isExpanded ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                ),
+                Text(widget.name),
+              ],
+            ),
+          ),
+          if (isExpanded)
+            Container(
+              margin: EdgeInsets.only(top: 8.0),
+              padding: EdgeInsets.all(8.0),
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(20.0),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text('Workout Content'),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.remove_circle),
+                    onPressed: removeWorkout,
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.edit),
+                    onPressed: () {
+                      editWorkout(context, widget.index);
+                    },
+                  )
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
