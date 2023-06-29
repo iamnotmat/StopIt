@@ -17,6 +17,8 @@ dependencies:
   porcupine_flutter: ^2.2.0
   path: ^1.8.0
   google_fonts: ^5.1.0
+  sqflite: ^2.2.8+4
+  shared_preferences: ^2.1.2
 
 dev_dependencies:
   integration_test:
