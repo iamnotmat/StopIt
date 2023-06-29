@@ -107,6 +107,15 @@ class Set {
       'repetitions': repetitions,
     };
   }
+
+  @override
+  String toString() {
+    String intervalsText = '';
+    for (Interval interval in intervals) {
+      intervalsText += '   ${interval.toString()}\n';
+    }
+    return 'Set Name: $name\nRepetitions: $repetitions\nIntervals:\n$intervalsText';
+  }
 }
 
 class Interval {
@@ -139,6 +148,12 @@ class Interval {
       'reps': reps,
       'repetitions': repetitions,
     };
+  }
+
+  @override
+  String toString() {
+    String typeText = type == IntervalType.time ? 'Time' : 'Reps';
+    return 'Interval Type: $typeText\nDuration: $duration seconds\nReps: $reps\nRepetitions: $repetitions';
   }
 }
 
