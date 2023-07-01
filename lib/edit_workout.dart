@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-List<WorkoutSet> sets = []; // Initialize the sets list
+List<Set> sets = []; // Initialize the sets list
 
 class WorkoutDesignPage extends StatefulWidget {
   Key? workoutKey; // Add the workout index parameter
@@ -37,7 +37,7 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
     final selectedWorkout =
         workouts.firstWhere((workout) => workout.key == widget.workoutKey);
     // Initialize the sets list with the sets from the selected workout
-    sets = selectedWorkout.sets.cast<WorkoutSet>();
+    sets = selectedWorkout.sets.cast<Set>();
   }
 
   @override
@@ -52,8 +52,8 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
             .asMap()
             .map((index, set) => MapEntry(
                   index,
-                  WorkoutSetWidget(
-                    key: ValueKey(index),
+                  SetWidget(
+                    key: UniqueKey(),
                     set: set,
                     onDelete: () {
                       setState(() {
@@ -77,7 +77,7 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           setState(() {
-            sets.add(WorkoutSet());
+            sets.add(Set());
           });
         },
         child: Icon(Icons.add),
@@ -86,14 +86,14 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
   }
 }
 
-class WorkoutSet {
+class Set {
   String name = '';
   List<Interval> intervals = [];
   int repetitions = 1;
 
-  WorkoutSet({this.name = '', this.repetitions = 1});
+  Set({this.name = '', this.repetitions = 1});
 
-  WorkoutSet.fromJson(Map<String, dynamic> json)
+  Set.fromJson(Map<String, dynamic> json)
       : name = json['name'],
         intervals = (json['intervals'] as List<dynamic>)
             .map((intervalJson) => Interval.fromJson(intervalJson))
@@ -166,18 +166,18 @@ enum IntervalType {
   reps,
 }
 
-class WorkoutSetWidget extends StatefulWidget {
-  final WorkoutSet set;
+class SetWidget extends StatefulWidget {
+  final Set set;
   final VoidCallback onDelete;
 
-  const WorkoutSetWidget({Key? key, required this.set, required this.onDelete})
+  const SetWidget({Key? key, required this.set, required this.onDelete})
       : super(key: key);
 
   @override
-  _WorkoutSetWidgetState createState() => _WorkoutSetWidgetState();
+  _SetWidgetState createState() => _SetWidgetState();
 }
 
-class _WorkoutSetWidgetState extends State<WorkoutSetWidget> {
+class _SetWidgetState extends State<SetWidget> {
   TextEditingController _nameController = TextEditingController();
   TextEditingController _repetitionsController = TextEditingController();
 
@@ -243,7 +243,7 @@ class _WorkoutSetWidgetState extends State<WorkoutSetWidget> {
                 .map((index, interval) => MapEntry(
                       index,
                       IntervalWidget(
-                        key: ValueKey(index),
+                        key: UniqueKey(),
                         interval: interval,
                         onDelete: () {
                           setState(() {
