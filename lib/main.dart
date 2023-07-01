@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'database_helper.dart';
 import 'edit_workout.dart';
+import 'play.dart';
 
 void main() {
   runApp(MyApp());
@@ -159,6 +160,13 @@ class _WorkoutState extends State<Workout> {
     );
   }
 
+  void playWorkout(BuildContext context, int index) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => PlayWorkoutPage(workout: widget)),
+    );
+  }
+
   void toggleExpansion() {
     setState(() {
       isExpanded = !isExpanded;
@@ -215,6 +223,12 @@ class _WorkoutState extends State<Workout> {
                         icon: Icon(Icons.edit),
                         onPressed: () {
                           editWorkout(context, widget.index);
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.play_arrow),
+                        onPressed: () {
+                          playWorkout(context, widget.index);
                         },
                       ),
                     ],

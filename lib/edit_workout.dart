@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-List<Set> sets = []; // Initialize the sets list
+List<WorkoutSet> sets = []; // Initialize the sets list
 
 class WorkoutDesignPage extends StatefulWidget {
   Key? workoutKey; // Add the workout index parameter
@@ -37,7 +37,7 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
     final selectedWorkout =
         workouts.firstWhere((workout) => workout.key == widget.workoutKey);
     // Initialize the sets list with the sets from the selected workout
-    sets = selectedWorkout.sets.cast<Set>();
+    sets = selectedWorkout.sets.cast<WorkoutSet>();
   }
 
   @override
@@ -52,7 +52,7 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
             .asMap()
             .map((index, set) => MapEntry(
                   index,
-                  SetWidget(
+                  WorkoutSetWidget(
                     key: ValueKey(index),
                     set: set,
                     onDelete: () {
@@ -69,7 +69,7 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
             if (newIndex > oldIndex) {
               newIndex -= 1;
             }
-            final Set set = sets.removeAt(oldIndex);
+            final set = sets.removeAt(oldIndex);
             sets.insert(newIndex, set);
           });
         },
@@ -77,7 +77,7 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           setState(() {
-            sets.add(Set());
+            sets.add(WorkoutSet());
           });
         },
         child: Icon(Icons.add),
@@ -86,14 +86,14 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
   }
 }
 
-class Set {
+class WorkoutSet {
   String name = '';
   List<Interval> intervals = [];
   int repetitions = 1;
 
-  Set({this.name = '', this.repetitions = 1});
+  WorkoutSet({this.name = '', this.repetitions = 1});
 
-  Set.fromJson(Map<String, dynamic> json)
+  WorkoutSet.fromJson(Map<String, dynamic> json)
       : name = json['name'],
         intervals = (json['intervals'] as List<dynamic>)
             .map((intervalJson) => Interval.fromJson(intervalJson))
@@ -153,7 +153,11 @@ class Interval {
   @override
   String toString() {
     String typeText = type == IntervalType.time ? 'Time' : 'Reps';
-    return 'Interval Type: $typeText\nDuration: $duration seconds\nReps: $reps\nRepetitions: $repetitions';
+    if (type == IntervalType.time) {
+      return '$name: $duration seconds';
+    } else {
+      return '$name: $reps reps';
+    }
   }
 }
 
@@ -162,18 +166,18 @@ enum IntervalType {
   reps,
 }
 
-class SetWidget extends StatefulWidget {
-  final Set set;
+class WorkoutSetWidget extends StatefulWidget {
+  final WorkoutSet set;
   final VoidCallback onDelete;
 
-  const SetWidget({Key? key, required this.set, required this.onDelete})
+  const WorkoutSetWidget({Key? key, required this.set, required this.onDelete})
       : super(key: key);
 
   @override
-  _SetWidgetState createState() => _SetWidgetState();
+  _WorkoutSetWidgetState createState() => _WorkoutSetWidgetState();
 }
 
-class _SetWidgetState extends State<SetWidget> {
+class _WorkoutSetWidgetState extends State<WorkoutSetWidget> {
   TextEditingController _nameController = TextEditingController();
   TextEditingController _repetitionsController = TextEditingController();
 
@@ -255,8 +259,7 @@ class _SetWidgetState extends State<SetWidget> {
                 if (newIndex > oldIndex) {
                   newIndex -= 1;
                 }
-                final Interval interval =
-                    widget.set.intervals.removeAt(oldIndex);
+                final interval = widget.set.intervals.removeAt(oldIndex);
                 widget.set.intervals.insert(newIndex, interval);
               });
             },
@@ -405,6 +408,7 @@ class _IntervalWidgetState extends State<IntervalWidget> {
                 ),
               ],
             ),
+            SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
