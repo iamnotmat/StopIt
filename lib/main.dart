@@ -141,7 +141,7 @@ class Workout extends StatefulWidget {
 
   final int index;
   final String name;
-  List<Set> sets = [];
+  List<WorkoutSet> sets = [];
   final Function(Workout) removeWorkout;
 
   @override
