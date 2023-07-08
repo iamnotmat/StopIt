@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'database_helper.dart';
 import 'edit_workout.dart';
+import 'play.dart';
 
 void main() {
   runApp(MyApp());
@@ -160,10 +160,11 @@ class _WorkoutState extends State<Workout> {
   }
 
   void playWorkout(BuildContext context, int index) {
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(builder: (context) => PlayWorkoutPage(workout: widget)),
-    // );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (context) => PlayWorkoutPage(workoutKey: widget.key)),
+    );
   }
 
   void toggleExpansion() {

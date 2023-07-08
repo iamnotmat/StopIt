@@ -88,7 +88,7 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
 
 class WorkoutSet {
   String name = '';
-  List<Interval> intervals = [];
+  List<WorkoutInterval> intervals = [];
   int repetitions = 1;
 
   WorkoutSet({this.name = '', this.repetitions = 1});
@@ -96,7 +96,7 @@ class WorkoutSet {
   WorkoutSet.fromJson(Map<String, dynamic> json)
       : name = json['name'],
         intervals = (json['intervals'] as List<dynamic>)
-            .map((intervalJson) => Interval.fromJson(intervalJson))
+            .map((intervalJson) => WorkoutInterval.fromJson(intervalJson))
             .toList(),
         repetitions = json['repetitions'];
 
@@ -111,21 +111,21 @@ class WorkoutSet {
   @override
   String toString() {
     String intervalsText = '';
-    for (Interval interval in intervals) {
+    for (WorkoutInterval interval in intervals) {
       intervalsText += '   ${interval.toString()}\n';
     }
     return 'Set Name: $name\nRepetitions: $repetitions\nIntervals:\n$intervalsText';
   }
 }
 
-class Interval {
+class WorkoutInterval {
   String name = '';
   IntervalType type;
   int duration; // in seconds
   int reps;
   int repetitions = 1;
 
-  Interval({
+  WorkoutInterval({
     this.type = IntervalType.time,
     this.duration = 0,
     this.reps = 0,
@@ -133,7 +133,7 @@ class Interval {
     this.repetitions = 1,
   });
 
-  Interval.fromJson(Map<String, dynamic> json)
+  WorkoutInterval.fromJson(Map<String, dynamic> json)
       : name = json['name'],
         type = IntervalType.values[json['type']],
         duration = json['duration'],
@@ -191,98 +191,98 @@ class _SetWidgetState extends State<SetWidget> {
   @override
   Widget build(BuildContext context) {
     return Card(
-      key: widget.key,
-      margin: EdgeInsets.all(10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ListTile(
-            title: TextFormField(
-              controller: _nameController,
-              onChanged: (value) {
-                setState(() {
-                  widget.set.name = value;
-                });
-              },
-              decoration: InputDecoration(
-                labelText: 'Set Name',
-              ),
-            ),
-            trailing: IconButton(
-              icon: Icon(Icons.delete),
-              onPressed: () {
-                setState(() {
-                  widget.onDelete();
-                });
-              },
-            ),
-          ),
-          Row(
-            children: [
-              Text('Repetitions:'),
-              SizedBox(width: 10),
-              Expanded(
-                child: TextFormField(
-                  controller: _repetitionsController,
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) {
-                    setState(() {
-                      widget.set.repetitions = int.tryParse(value) ?? 1;
-                    });
-                  },
+        key: widget.key,
+        margin: EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ListTile(
+              title: TextFormField(
+                controller: _nameController,
+                onChanged: (value) {
+                  setState(() {
+                    widget.set.name = value;
+                  });
+                },
+                decoration: InputDecoration(
+                  labelText: 'Set Name',
                 ),
               ),
-            ],
-          ),
-          ReorderableListView(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            padding: EdgeInsets.zero,
-            children: widget.set.intervals
-                .asMap()
-                .map((index, interval) => MapEntry(
-                      index,
-                      IntervalWidget(
-                        key: UniqueKey(),
-                        interval: interval,
-                        onDelete: () {
-                          setState(() {
-                            widget.set.intervals.removeAt(index);
-                          });
-                        },
-                      ),
-                    ))
-                .values
-                .toList(),
-            onReorder: (oldIndex, newIndex) {
-              setState(() {
-                if (newIndex > oldIndex) {
-                  newIndex -= 1;
-                }
-                final interval = widget.set.intervals.removeAt(oldIndex);
-                widget.set.intervals.insert(newIndex, interval);
-              });
-            },
-          ),
-          Padding(
-            padding: EdgeInsets.all(10),
-            child: ElevatedButton(
-              onPressed: () {
+              trailing: IconButton(
+                icon: Icon(Icons.delete),
+                onPressed: () {
+                  setState(() {
+                    widget.onDelete();
+                  });
+                },
+              ),
+            ),
+            Row(
+              children: [
+                Text('Repetitions:'),
+                SizedBox(width: 10),
+                Expanded(
+                  child: TextFormField(
+                    controller: _repetitionsController,
+                    keyboardType: TextInputType.number,
+                    onChanged: (value) {
+                      setState(() {
+                        widget.set.repetitions = int.tryParse(value) ?? 1;
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+            ReorderableListView(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.zero,
+              children: widget.set.intervals
+                  .asMap()
+                  .map((index, interval) => MapEntry(
+                        index,
+                        IntervalWidget(
+                          key: UniqueKey(),
+                          interval: interval,
+                          onDelete: () {
+                            setState(() {
+                              widget.set.intervals.removeAt(index);
+                            });
+                          },
+                        ),
+                      ))
+                  .values
+                  .toList(),
+              onReorder: (oldIndex, newIndex) {
                 setState(() {
-                  widget.set.intervals.add(Interval(type: IntervalType.time));
+                  if (newIndex > oldIndex) {
+                    newIndex -= 1;
+                  }
+                  final interval = widget.set.intervals.removeAt(oldIndex);
+                  widget.set.intervals.insert(newIndex, interval);
                 });
               },
-              child: Text('Add Interval'),
             ),
-          ),
-        ],
-      ),
-    );
+            Padding(
+              padding: EdgeInsets.all(10),
+              child: ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    widget.set.intervals
+                        .add(WorkoutInterval(type: IntervalType.time));
+                  });
+                },
+                child: Text('Add Interval'),
+              ),
+            ),
+          ],
+        ));
   }
 }
 
 class IntervalWidget extends StatefulWidget {
-  final Interval interval;
+  final WorkoutInterval interval;
   final VoidCallback onDelete;
 
   const IntervalWidget(
