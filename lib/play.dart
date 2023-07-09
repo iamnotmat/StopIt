@@ -15,6 +15,7 @@ class PlayWorkoutPage extends StatefulWidget {
 class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
   List<WorkoutSet> sets = [];
   int currentSetIndex = 0;
+  int currentSetReps = 0;
   int currentIntervalIndex = 0;
   bool isTimerRunning = false;
   bool isTimerPaused = false;
@@ -25,7 +26,6 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
   @override
   void initState() {
     super.initState();
-    // Assuming you have a workouts list with Workout objects
     if (widget.workoutKey != null) {
       final Workout? workout = workouts.firstWhere(
         (workout) => workout.key == widget.workoutKey,
@@ -33,6 +33,9 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
       );
       if (workout != null) {
         sets = workout.sets;
+        if (sets.isNotEmpty) {
+          currentSetReps = sets[currentSetIndex].repetitions;
+        }
       }
     }
   }
@@ -46,15 +49,29 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
   void startIntervalTimer() {
     setState(() {
       isTimerRunning = true;
-      final currentInterval =
-          sets[currentSetIndex].intervals[currentIntervalIndex];
+      final currentSet = sets[currentSetIndex];
+      if (currentSet.intervals.isEmpty) {
+        // No intervals defined, handle the case accordingly
+        // For example, you could cancel the timer and perform any necessary actions
+        intervalTimer?.cancel();
+        return;
+      }
+      final currentInterval = currentSet.intervals[currentIntervalIndex];
       secondsRemaining = currentInterval.duration;
       isRepsInterval = currentInterval.type == IntervalType.reps;
     });
 
-    intervalTimer?.cancel(); // Cancel the existing timer
+    // If there's no intervals
+    if (sets[currentSetIndex].intervals.isEmpty) {
+      // No intervals defined, handle the case accordingly
+      // For example, you could cancel the timer and perform any necessary actions
+      intervalTimer?.cancel();
+      return;
+    }
 
-    if (!isRepsInterval) {
+    if (isRepsInterval) {
+      intervalTimer?.cancel(); // Cancel the existing timer
+    } else {
       // For non-"reps" intervals, start the timer as before
       const oneSec = Duration(seconds: 1);
       intervalTimer = Timer.periodic(oneSec, (timer) {
@@ -74,15 +91,48 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
 
   void proceedToNextInterval() {
     setState(() {
-      if (currentIntervalIndex < sets[currentSetIndex].intervals.length - 1) {
+      if (sets.isEmpty) {
+        // No sets available, workout completed
+        currentSetIndex = 0;
+        currentIntervalIndex = 0;
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Workout Completed'),
+            content: Text('Congratulations!'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else if (currentIntervalIndex <
+          sets[currentSetIndex].intervals.length - 1) {
         // Move to the next interval
         currentIntervalIndex++;
         startIntervalTimer();
-      } else if (currentSetIndex < sets.length - 1) {
-        // Move to the next set
-        currentSetIndex++;
+      } else if (currentSetIndex == sets.length - 1 && currentSetReps > 1) {
+        // Repeat the current set
+        currentSetReps--;
         currentIntervalIndex = 0;
         startIntervalTimer();
+      } else if (currentSetIndex < sets.length - 1) {
+        if (currentSetReps > 1) {
+          // Repeat the current set
+          currentSetReps--;
+          currentIntervalIndex = 0;
+          startIntervalTimer();
+        } else {
+          // Move to the next set
+          currentSetIndex++;
+          currentSetReps = sets[currentSetIndex].repetitions;
+          currentIntervalIndex = 0;
+          startIntervalTimer();
+        }
       } else {
         // Workout completed
         currentSetIndex = 0;
@@ -126,6 +176,8 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
 
   void navigateToPreviousSet() {
     setState(() {
+      // Stop timer if it's running
+      intervalTimer?.cancel();
       if (currentSetIndex > 0) {
         currentSetIndex--;
         currentIntervalIndex = 0;
@@ -136,8 +188,15 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
 
   void navigateToNextSet() {
     setState(() {
-      if (currentSetIndex < sets.length - 1) {
+      // Stop timer if it's running
+      intervalTimer?.cancel();
+      if (currentSetReps > 1) {
+        currentSetReps--;
+        currentIntervalIndex = 0;
+        startIntervalTimer();
+      } else if (currentSetIndex < sets.length - 1) {
         currentSetIndex++;
+        currentSetReps = sets[currentSetIndex].repetitions;
         currentIntervalIndex = 0;
         startIntervalTimer();
       }
@@ -146,6 +205,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
 
   void navigateToPreviousInterval() {
     setState(() {
+      intervalTimer?.cancel();
       if (currentIntervalIndex > 0) {
         currentIntervalIndex--;
         startIntervalTimer();
@@ -159,11 +219,17 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
 
   void navigateToNextInterval() {
     setState(() {
+      intervalTimer?.cancel();
       if (currentIntervalIndex < sets[currentSetIndex].intervals.length - 1) {
         currentIntervalIndex++;
         startIntervalTimer();
+      } else if (currentSetReps > 1) {
+        currentSetReps--;
+        currentIntervalIndex = 0;
+        startIntervalTimer();
       } else if (currentSetIndex < sets.length - 1) {
         currentSetIndex++;
+        currentSetReps = sets[currentSetIndex].repetitions;
         currentIntervalIndex = 0;
         startIntervalTimer();
       }
@@ -197,7 +263,9 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Interval ${currentIntervalIndex + 1}/${sets[currentSetIndex].intervals.length}',
+                      sets.isNotEmpty && currentSetIndex < sets.length
+                          ? 'Interval ${currentIntervalIndex + 1}/${sets[currentSetIndex].intervals.length}'
+                          : 'No intervals available',
                       style: TextStyle(fontSize: 16),
                     ),
                   ],
@@ -239,7 +307,11 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
                 : SizedBox(),
             SizedBox(height: 16),
             ElevatedButton(
-              onPressed: isTimerRunning ? pauseTimer : startWorkout,
+              onPressed: sets.isNotEmpty
+                  ? isTimerRunning
+                      ? pauseTimer
+                      : startWorkout
+                  : null,
               child: Text(isTimerRunning ? 'Pause' : 'Start Workout'),
             ),
             SizedBox(height: 16),

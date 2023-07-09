@@ -11,7 +11,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Workout App',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.orange,
       ),
       home: WorkoutDesignPage(workoutKey: UniqueKey()),
     );
@@ -45,6 +45,7 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Workout Design'),
+        backgroundColor: Color(0xFF252525),
       ),
       body: ReorderableListView(
         padding: EdgeInsets.symmetric(vertical: 10),
@@ -81,7 +82,9 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
           });
         },
         child: Icon(Icons.add),
+        backgroundColor: Color(0xFFFF0000),
       ),
+      backgroundColor: Color(0xFF414141),
     );
   }
 }
@@ -191,93 +194,154 @@ class _SetWidgetState extends State<SetWidget> {
   @override
   Widget build(BuildContext context) {
     return Card(
-        key: widget.key,
-        margin: EdgeInsets.all(10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ListTile(
-              title: TextFormField(
-                controller: _nameController,
-                onChanged: (value) {
-                  setState(() {
-                    widget.set.name = value;
-                  });
-                },
-                decoration: InputDecoration(
-                  labelText: 'Set Name',
-                ),
-              ),
-              trailing: IconButton(
-                icon: Icon(Icons.delete),
-                onPressed: () {
-                  setState(() {
-                    widget.onDelete();
-                  });
-                },
-              ),
-            ),
-            Row(
-              children: [
-                Text('Repetitions:'),
-                SizedBox(width: 10),
-                Expanded(
-                  child: TextFormField(
-                    controller: _repetitionsController,
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) {
-                      setState(() {
-                        widget.set.repetitions = int.tryParse(value) ?? 1;
-                      });
-                    },
-                  ),
-                ),
-              ],
-            ),
-            ReorderableListView(
-              shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
-              padding: EdgeInsets.zero,
-              children: widget.set.intervals
-                  .asMap()
-                  .map((index, interval) => MapEntry(
-                        index,
-                        IntervalWidget(
-                          key: UniqueKey(),
-                          interval: interval,
-                          onDelete: () {
-                            setState(() {
-                              widget.set.intervals.removeAt(index);
-                            });
-                          },
-                        ),
-                      ))
-                  .values
-                  .toList(),
-              onReorder: (oldIndex, newIndex) {
+      key: widget.key,
+      margin: EdgeInsets.all(10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+      color: Color(0xFF252525),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ListTile(
+            title: TextFormField(
+              controller: _nameController,
+              onChanged: (value) {
                 setState(() {
-                  if (newIndex > oldIndex) {
-                    newIndex -= 1;
-                  }
-                  final interval = widget.set.intervals.removeAt(oldIndex);
-                  widget.set.intervals.insert(newIndex, interval);
+                  widget.set.name = value;
+                });
+              },
+              decoration: InputDecoration(
+                labelText: 'Set Name',
+                labelStyle: TextStyle(color: Colors.white),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Color(0xFFff0000)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Color(0xFFaf0404)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            trailing: IconButton(
+              icon: Icon(Icons.delete, color: Colors.white),
+              onPressed: () {
+                setState(() {
+                  widget.onDelete();
                 });
               },
             ),
-            Padding(
-              padding: EdgeInsets.all(10),
-              child: ElevatedButton(
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Repetitions:',
+                style: TextStyle(color: Colors.white),
+              ),
+              SizedBox(width: 10),
+              IconButton(
+                icon: Icon(Icons.remove, color: Colors.white),
                 onPressed: () {
                   setState(() {
-                    widget.set.intervals
-                        .add(WorkoutInterval(type: IntervalType.time));
+                    if (widget.set.repetitions > 0) {
+                      widget.set.repetitions--;
+                      _repetitionsController.text =
+                          widget.set.repetitions.toString();
+                    }
                   });
                 },
-                child: Text('Add Interval'),
               ),
+              SizedBox(
+                width: 50,
+                child: TextFormField(
+                  textAlign: TextAlign.center,
+                  controller: _repetitionsController,
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) {
+                    setState(() {
+                      widget.set.repetitions = int.tryParse(value) ?? 1;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Color(0xFF414141),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide.none,
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide.none,
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                  ),
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.add, color: Colors.white),
+                onPressed: () {
+                  setState(() {
+                    widget.set.repetitions++;
+                    _repetitionsController.text =
+                        widget.set.repetitions.toString();
+                  });
+                },
+              ),
+            ],
+          ),
+          ReorderableListView(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            children: widget.set.intervals
+                .asMap()
+                .map((index, interval) => MapEntry(
+                      index,
+                      IntervalWidget(
+                        key: UniqueKey(),
+                        interval: interval,
+                        onDelete: () {
+                          setState(() {
+                            widget.set.intervals.removeAt(index);
+                          });
+                        },
+                      ),
+                    ))
+                .values
+                .toList(),
+            onReorder: (oldIndex, newIndex) {
+              setState(() {
+                if (newIndex > oldIndex) {
+                  newIndex -= 1;
+                }
+                final interval = widget.set.intervals.removeAt(oldIndex);
+                widget.set.intervals.insert(newIndex, interval);
+              });
+            },
+          ),
+          Padding(
+            padding: EdgeInsets.all(10),
+            child: ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  widget.set.intervals
+                      .add(WorkoutInterval(type: IntervalType.time));
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                primary: Color(0xFFaf0404),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text('Add Interval'),
             ),
-          ],
-        ));
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -308,63 +372,90 @@ class _IntervalWidgetState extends State<IntervalWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: IconButton(
-        icon: Icon(Icons.delete),
-        onPressed: () {
-          setState(() {
-            widget.onDelete();
-          });
-        },
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10.0),
       ),
-      title: TextFormField(
-        controller: _nameController,
-        onChanged: (value) {
-          setState(() {
-            widget.interval.name = value;
-          });
-        },
-        decoration: InputDecoration(
-          labelText: 'Interval Name',
+      color: Color(0xFF252525),
+      child: ListTile(
+        leading: IconButton(
+          icon: Icon(Icons.delete),
+          color: Colors.white,
+          onPressed: () {
+            setState(() {
+              widget.onDelete();
+            });
+          },
         ),
-      ),
-      subtitle: Row(
-        children: [
-          Text('Type:'),
-          SizedBox(width: 10),
-          DropdownButton<IntervalType>(
-            value: widget.interval.type,
-            onChanged: (value) {
-              setState(() {
-                widget.interval.type = value!;
-              });
-            },
-            items: IntervalType.values
-                .map((type) => DropdownMenuItem(
-                      value: type,
-                      child: Text(type == IntervalType.time ? 'Time' : 'Reps'),
-                    ))
-                .toList(),
+        title: TextFormField(
+          style: TextStyle(color: Colors.white),
+          controller: _nameController,
+          onChanged: (value) {
+            setState(() {
+              widget.interval.name = value;
+            });
+          },
+          decoration: InputDecoration(
+            labelText: 'Interval Name',
+            labelStyle: TextStyle(color: Colors.white),
           ),
-          SizedBox(width: 10),
-          Expanded(
-            child: TextFormField(
-              controller: widget.interval.type == IntervalType.time
-                  ? _durationController
-                  : _repsController,
-              keyboardType: TextInputType.number,
+        ),
+        subtitle: Row(
+          children: [
+            Text('Type:', style: TextStyle(color: Colors.white)),
+            SizedBox(width: 10),
+            DropdownButton<IntervalType>(
+              value: widget.interval.type,
               onChanged: (value) {
                 setState(() {
-                  if (widget.interval.type == IntervalType.time) {
-                    widget.interval.duration = int.tryParse(value) ?? 0;
-                  } else {
-                    widget.interval.reps = int.tryParse(value) ?? 0;
-                  }
+                  widget.interval.type = value!;
                 });
               },
+              items: IntervalType.values
+                  .map((type) => DropdownMenuItem(
+                        value: type,
+                        child: Text(
+                          type == IntervalType.time ? 'Time' : 'Reps',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ))
+                  .toList(),
+              dropdownColor: Color(0xFF252525),
+              underline: Container(),
             ),
-          ),
-        ],
+            SizedBox(width: 10),
+            Expanded(
+              child: TextFormField(
+                controller: widget.interval.type == IntervalType.time
+                    ? _durationController
+                    : _repsController,
+                keyboardType: TextInputType.number,
+                onChanged: (value) {
+                  setState(() {
+                    if (widget.interval.type == IntervalType.time) {
+                      widget.interval.duration = int.tryParse(value) ?? 0;
+                    } else {
+                      widget.interval.reps = int.tryParse(value) ?? 0;
+                    }
+                  });
+                },
+                style: TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Color(0xFF414141),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
