@@ -16,11 +16,11 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
   List<WorkoutSet> sets = [];
   int currentSetIndex = 0;
   int currentSetReps = 0;
-  int currentIntervalIndex = 0;
   bool isTimerRunning = false;
   bool isTimerPaused = false;
   int secondsRemaining = 0;
   Timer? intervalTimer;
+  int currentIntervalIndex = 0;
   bool isRepsInterval = false; // Flag to track "reps" intervals
 
   @override
@@ -238,90 +238,161 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Define color constants
+    final Color appBarColor = Color(0xFF252525);
+    final Color primaryColor = Color(0xFFFF0000);
+    final Color accentColor = Color(0xFFAF0404);
+    final Color textColor = Color(0xFF414141);
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Play Workout'),
+        backgroundColor: appBarColor,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${workouts.firstWhere((workout) => workout.key == widget.workoutKey).name}',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+              SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    children: [
+                      Text(
+                        'Set ${currentSetIndex + 1}/${sets.length}',
+                        style: TextStyle(fontSize: 16, color: textColor),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        sets.isNotEmpty && currentSetIndex < sets.length
+                            ? 'Interval ${currentIntervalIndex + 1}/${sets[currentSetIndex].intervals.length}'
+                            : 'No intervals available',
+                        style: TextStyle(fontSize: 16, color: textColor),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: navigateToPreviousSet,
+                        icon: Icon(Icons.skip_previous),
+                        color: primaryColor,
+                      ),
+                      IconButton(
+                        onPressed: navigateToPreviousInterval,
+                        icon: Icon(Icons.navigate_before),
+                        color: primaryColor,
+                      ),
+                      IconButton(
+                        onPressed: navigateToNextInterval,
+                        icon: Icon(Icons.navigate_next),
+                        color: primaryColor,
+                      ),
+                      IconButton(
+                        onPressed: navigateToNextSet,
+                        icon: Icon(Icons.skip_next),
+                        color: primaryColor,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              // Set and Interval name
+              SizedBox(height: 50),
+              sets.isNotEmpty && currentSetIndex < sets.length
+                  ? Center(
+                      child: Text(
+                      sets[currentSetIndex].name,
+                      style: TextStyle(
+                          fontSize: MediaQuery.of(context).size.height * 0.03,
+                          fontWeight: FontWeight.bold,
+                          color: textColor),
+                    ))
+                  : SizedBox(),
+              SizedBox(height: 16),
+              sets.isNotEmpty &&
+                      currentSetIndex < sets.length &&
+                      sets[currentSetIndex].intervals.isNotEmpty &&
+                      currentIntervalIndex <
+                          sets[currentSetIndex].intervals.length
+                  ? Center(
+                      child: Text(
+                      sets[currentSetIndex]
+                          .intervals[currentIntervalIndex]
+                          .name,
+                      style: TextStyle(
+                          fontSize: MediaQuery.of(context).size.height * 0.05,
+                          color: textColor),
+                    ))
+                  : SizedBox(),
+              SizedBox(height: 100),
+              Center(
+                child: isTimerRunning && !isRepsInterval
+                    ? Text(
+                        secondsRemaining.toString(),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: MediaQuery.of(context).size.height * 0.1,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                        ),
+                      )
+                    : SizedBox(),
+              ),
+              Center(
+                child: isTimerRunning && isRepsInterval
+                    ? Text(
+                        'Reps: ${sets[currentSetIndex].intervals[currentIntervalIndex].reps}',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: MediaQuery.of(context).size.height * 0.06,
+                            fontWeight: FontWeight.bold,
+                            color: textColor),
+                      )
+                    : SizedBox(),
+              ),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: Padding(
         padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Workout Name',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        child: ElevatedButton(
+          onPressed: sets.isNotEmpty
+              ? currentSetIndex == 0 &&
+                      currentIntervalIndex == 0 &&
+                      !isTimerRunning
+                  ? startWorkout
+                  : isTimerPaused
+                      ? resumeTimer
+                      : pauseTimer
+              : null,
+          child: Text(
+            currentSetIndex == 0 && currentIntervalIndex == 0 && !isTimerRunning
+                ? 'Start Workout'
+                : isTimerPaused
+                    ? 'Resume'
+                    : 'Pause',
+            style: TextStyle(color: Colors.white),
+          ),
+          style: ElevatedButton.styleFrom(
+            primary: primaryColor,
+            minimumSize: Size(double.infinity, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16.0),
             ),
-            SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  children: [
-                    Text(
-                      'Set ${currentSetIndex + 1}/${sets.length}',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      sets.isNotEmpty && currentSetIndex < sets.length
-                          ? 'Interval ${currentIntervalIndex + 1}/${sets[currentSetIndex].intervals.length}'
-                          : 'No intervals available',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: navigateToPreviousSet,
-                      icon: Icon(Icons.skip_previous),
-                    ),
-                    IconButton(
-                      onPressed: navigateToPreviousInterval,
-                      icon: Icon(Icons.navigate_before),
-                    ),
-                    IconButton(
-                      onPressed: navigateToNextInterval,
-                      icon: Icon(Icons.navigate_next),
-                    ),
-                    IconButton(
-                      onPressed: navigateToNextSet,
-                      icon: Icon(Icons.skip_next),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-            isTimerRunning && !isRepsInterval
-                ? Text(
-                    secondsRemaining.toString(),
-                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                  )
-                : SizedBox(),
-            isTimerRunning && isRepsInterval
-                ? Text(
-                    'Reps: ${secondsRemaining.toString()}',
-                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                  )
-                : SizedBox(),
-            SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: sets.isNotEmpty
-                  ? isTimerRunning
-                      ? pauseTimer
-                      : startWorkout
-                  : null,
-              child: Text(isTimerRunning ? 'Pause' : 'Start Workout'),
-            ),
-            SizedBox(height: 16),
-            isTimerPaused
-                ? ElevatedButton(
-                    onPressed: resumeTimer,
-                    child: Text('Resume'),
-                  )
-                : SizedBox(),
-          ],
+          ),
         ),
       ),
     );

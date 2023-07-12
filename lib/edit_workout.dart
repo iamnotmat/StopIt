@@ -30,6 +30,8 @@ class WorkoutDesignPage extends StatefulWidget {
 }
 
 class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
+  TextEditingController nameController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -38,14 +40,50 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
         workouts.firstWhere((workout) => workout.key == widget.workoutKey);
     // Initialize the sets list with the sets from the selected workout
     sets = selectedWorkout.sets.cast<WorkoutSet>();
+    nameController.text = selectedWorkout.name;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Workout Design'),
-        backgroundColor: Color(0xFF252525),
+      appBar: PreferredSize(
+        preferredSize:
+            Size.fromHeight(80), // Set the preferred height of the AppBar
+        child: AppBar(
+          title: Align(
+            alignment:
+                Alignment.bottomLeft, // Align the label to the bottom left
+            child: TextFormField(
+              controller: nameController,
+              style: TextStyle(
+                color: Colors.white,
+              ),
+              onChanged: (value) {
+                setState(() {
+                  workouts
+                      .firstWhere((workout) => workout.key == widget.workoutKey)
+                      .name = value;
+                });
+              },
+              decoration: InputDecoration(
+                labelText: 'Workout Name',
+                labelStyle: TextStyle(color: Colors.white),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Color(0xFFff0000)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Color(0xFFaf0404)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                contentPadding:
+                    EdgeInsets.symmetric(vertical: 5, horizontal: 20),
+              ),
+            ),
+          ),
+          toolbarHeight: 60, // Reduce the height of the AppBar
+          backgroundColor: Color(0xFF252525),
+        ),
       ),
       body: ReorderableListView(
         padding: EdgeInsets.symmetric(vertical: 10),
@@ -115,9 +153,9 @@ class WorkoutSet {
   String toString() {
     String intervalsText = '';
     for (WorkoutInterval interval in intervals) {
-      intervalsText += '   ${interval.toString()}\n';
+      intervalsText += '   • ${interval.toString()}\n';
     }
-    return 'Set Name: $name\nRepetitions: $repetitions\nIntervals:\n$intervalsText';
+    return '• $name (x$repetitions)\n$intervalsText';
   }
 }
 
@@ -206,6 +244,7 @@ class _SetWidgetState extends State<SetWidget> {
           ListTile(
             title: TextFormField(
               controller: _nameController,
+              style: TextStyle(color: Colors.white),
               onChanged: (value) {
                 setState(() {
                   widget.set.name = value;

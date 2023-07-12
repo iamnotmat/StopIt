@@ -140,7 +140,7 @@ class Workout extends StatefulWidget {
   }) : super(key: key);
 
   final int index;
-  final String name;
+  String name;
   List<WorkoutSet> sets = [];
   final Function(Workout) removeWorkout;
 
@@ -193,10 +193,17 @@ class _WorkoutState extends State<Workout> {
             onTap: toggleExpansion,
             child: Row(
               children: [
-                Icon(
-                  isExpanded ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                Expanded(
+                  child: Text(
+                    widget.name,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
                 ),
-                Text(widget.name),
               ],
             ),
           ),
@@ -213,42 +220,51 @@ class _WorkoutState extends State<Workout> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text('Workout Content'),
+                        flex: 1,
+                        child: IconButton(
+                          icon: Icon(Icons.remove_circle),
+                          onPressed: removeWorkout,
+                        ),
                       ),
-                      IconButton(
-                        icon: Icon(Icons.remove_circle),
-                        onPressed: removeWorkout,
+                      Expanded(
+                        flex: 1,
+                        child: IconButton(
+                          icon: Icon(Icons.edit),
+                          onPressed: () {
+                            editWorkout(context, widget.index);
+                          },
+                        ),
                       ),
-                      IconButton(
-                        icon: Icon(Icons.edit),
-                        onPressed: () {
-                          editWorkout(context, widget.index);
-                        },
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.play_arrow),
-                        onPressed: () {
-                          playWorkout(context, widget.index);
-                        },
+                      Expanded(
+                        flex: 1,
+                        child: IconButton(
+                          icon: Icon(Icons.play_arrow),
+                          onPressed: () {
+                            playWorkout(context, widget.index);
+                          },
+                        ),
                       ),
                     ],
                   ),
                 ),
+
                 SizedBox(
-                    height:
-                        8.0), // Add some spacing between the workout content and sets
-                Text('Created Sets:'),
-                // Add your code to display the sets here
-                // For example, if you have a list of sets, you can iterate over them and display each set
+                  height: 8.0,
+                ), // Add some spacing between the workout content and sets
+// Add your code to display the sets here
+// For example, if you have a list of sets, you can iterate over them and display each set
                 for (var set in widget.sets)
-                  Container(
-                    margin: EdgeInsets.only(top: 8.0),
-                    padding: EdgeInsets.all(8.0),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(20.0),
+                  SizedBox(
+                    width: 150.0, // Specify a fixed height for the container
+                    child: Container(
+                      margin: EdgeInsets.only(top: 8.0),
+                      padding: EdgeInsets.all(8.0),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(20.0),
+                      ),
+                      child: Text('$set'),
                     ),
-                    child: Text('Set: $set'),
                   ),
               ],
             ),
