@@ -247,12 +247,9 @@ class _WorkoutState extends State<Workout> {
                     ],
                   ),
                 ),
-
                 SizedBox(
                   height: 8.0,
-                ), // Add some spacing between the workout content and sets
-// Add your code to display the sets here
-// For example, if you have a list of sets, you can iterate over them and display each set
+                ),
                 for (var set in widget.sets)
                   SizedBox(
                     width: 150.0, // Specify a fixed height for the container

@@ -186,23 +186,6 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
     });
   }
 
-  void navigateToNextSet() {
-    setState(() {
-      // Stop timer if it's running
-      intervalTimer?.cancel();
-      if (currentSetReps > 1) {
-        currentSetReps--;
-        currentIntervalIndex = 0;
-        startIntervalTimer();
-      } else if (currentSetIndex < sets.length - 1) {
-        currentSetIndex++;
-        currentSetReps = sets[currentSetIndex].repetitions;
-        currentIntervalIndex = 0;
-        startIntervalTimer();
-      }
-    });
-  }
-
   void navigateToPreviousInterval() {
     setState(() {
       intervalTimer?.cancel();
@@ -217,25 +200,6 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
     });
   }
 
-  void navigateToNextInterval() {
-    setState(() {
-      intervalTimer?.cancel();
-      if (currentIntervalIndex < sets[currentSetIndex].intervals.length - 1) {
-        currentIntervalIndex++;
-        startIntervalTimer();
-      } else if (currentSetReps > 1) {
-        currentSetReps--;
-        currentIntervalIndex = 0;
-        startIntervalTimer();
-      } else if (currentSetIndex < sets.length - 1) {
-        currentSetIndex++;
-        currentSetReps = sets[currentSetIndex].repetitions;
-        currentIntervalIndex = 0;
-        startIntervalTimer();
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     // Define color constants
@@ -243,6 +207,24 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
     final Color primaryColor = Color(0xFFFF0000);
     final Color accentColor = Color(0xFFAF0404);
     final Color textColor = Color(0xFF414141);
+
+    double progress = 0.0;
+    if (sets.isNotEmpty) {
+      int currentInterval = 0;
+
+      for (var i = 0; i < currentSetIndex; i++) {
+        currentInterval += sets[i].intervals.length;
+      }
+      currentInterval += currentIntervalIndex;
+
+      int totalIntervals = 0;
+
+      for (var i = 0; i < sets.length; i++) {
+        totalIntervals += sets[i].intervals.length;
+      }
+
+      progress = currentInterval / totalIntervals;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -255,12 +237,14 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '${workouts.firstWhere((workout) => workout.key == widget.workoutKey).name}',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
+              Center(
+                child: Text(
+                  '${workouts.firstWhere((workout) => workout.key == widget.workoutKey).name}',
+                  style: TextStyle(
+                    fontSize: MediaQuery.of(context).size.height * 0.03,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
                 ),
               ),
               SizedBox(height: 16),
@@ -295,15 +279,21 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
                         color: primaryColor,
                       ),
                       IconButton(
-                        onPressed: navigateToNextInterval,
+                        onPressed: proceedToNextInterval,
                         icon: Icon(Icons.navigate_next),
                         color: primaryColor,
                       ),
                       IconButton(
-                        onPressed: navigateToNextSet,
+                        onPressed: proceedToNextInterval,
                         icon: Icon(Icons.skip_next),
                         color: primaryColor,
                       ),
+                      SizedBox(width: 16),
+                      CircularProgressIndicator(
+                        value: progress,
+                        backgroundColor: Colors.grey,
+                        valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                      )
                     ],
                   ),
                 ],
