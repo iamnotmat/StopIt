@@ -1,7 +1,12 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'edit_workout.dart';
 import 'main.dart';
+import 'dart:io';
+import 'dart:async';
+import 'dart:convert';
+import 'package:porcupine_flutter/porcupine.dart';
+import 'package:porcupine_flutter/porcupine_manager.dart';
+import 'package:porcupine_flutter/porcupine_error.dart';
 
 class PlayWorkoutPage extends StatefulWidget {
   final Key? workoutKey;
@@ -23,6 +28,153 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
   int currentIntervalIndex = 0;
   bool isRepsInterval = false; // Flag to track "reps" intervals
 
+  // Porcupine variables
+  final String accessKey =
+      "BIEPMllOI32xRmMX+nphrmhKeKBRq0OXvzULJTqCRLT2Of9IXDkt7g=="; // AccessKey obtained from Picovoice Console (https://console.picovoice.ai/)
+  bool isError = false;
+  String errorMessage = "";
+
+  bool isDisabled = false;
+  bool isProcessing = false;
+  Color detectionColour = Color(0xff00e5c3);
+  Color defaultColour = Color(0xfff5fcff);
+  Color? backgroundColour;
+  String currentKeyword = "StopIt";
+  PorcupineManager? _porcupineManager;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state == AppLifecycleState.paused) {
+      await _stopProcessing();
+      await _porcupineManager?.delete();
+      _porcupineManager = null;
+    }
+  }
+
+// Load new keyword
+  Future<void> loadNewKeyword(String keyword) async {
+    setState(() {
+      isDisabled = true;
+    });
+
+    if (isProcessing) {
+      await _stopProcessing();
+    }
+
+    if (_porcupineManager != null) {
+      await _porcupineManager?.delete();
+      _porcupineManager = null;
+    }
+    try {
+      var platform = (Platform.isAndroid) ? "android" : "ios";
+      var keywordPath = "assets/keywords/$platform/${keyword}_$platform.ppn";
+
+      _porcupineManager = await PorcupineManager.fromKeywordPaths(
+          accessKey, [keywordPath], wakeWordCallback);
+
+      setState(() {
+        isError = false;
+      });
+    }
+    // Catch errors
+    on PorcupineInvalidArgumentException catch (ex) {
+      errorCallback(PorcupineInvalidArgumentException(
+          "${ex.message}\nEnsure your accessKey '$accessKey' is a valid access key."));
+    } on PorcupineActivationException {
+      errorCallback(
+          PorcupineActivationException("AccessKey activation error."));
+    } on PorcupineActivationLimitException {
+      errorCallback(PorcupineActivationLimitException(
+          "AccessKey reached its device limit."));
+    } on PorcupineActivationRefusedException {
+      errorCallback(PorcupineActivationRefusedException("AccessKey refused."));
+    } on PorcupineActivationThrottledException {
+      errorCallback(PorcupineActivationThrottledException(
+          "AccessKey has been throttled."));
+    } on PorcupineException catch (ex) {
+      errorCallback(ex);
+    } finally {
+      setState(() {
+        isDisabled = false;
+      });
+    }
+  }
+
+// Function called when an error occurs
+  void errorCallback(PorcupineException error) {
+    setState(() {
+      isError = true;
+      errorMessage = error.message!;
+    });
+  }
+
+// Function called when the start button is pressed
+  Future<void> _startProcessing() async {
+    setState(() {
+      isDisabled = true;
+    });
+
+    if (_porcupineManager == null) {
+      await loadNewKeyword(currentKeyword);
+    }
+
+    try {
+      await _porcupineManager?.start();
+      setState(() {
+        isProcessing = true;
+      });
+    } on PorcupineException catch (ex) {
+      errorCallback(ex);
+    } finally {
+      setState(() {
+        isDisabled = false;
+      });
+    }
+  }
+
+// Stop processing
+  Future<void> _stopProcessing() async {
+    setState(() {
+      isDisabled = true;
+    });
+
+    await _porcupineManager?.stop();
+
+    setState(() {
+      isDisabled = false;
+      isProcessing = false;
+    });
+  }
+
+// Build error message
+  buildErrorMessage(BuildContext context) {
+    return Expanded(
+        flex: 1,
+        child: Container(
+            alignment: Alignment.center,
+            margin: EdgeInsets.only(left: 20, right: 20),
+            decoration: !isError
+                ? null
+                : BoxDecoration(
+                    color: Colors.red, borderRadius: BorderRadius.circular(5)),
+            child: !isError
+                ? null
+                : Text(
+                    errorMessage,
+                    style: TextStyle(color: Colors.white, fontSize: 20),
+                  )));
+  }
+
+// Function called when wake word is detected
+  void wakeWordCallback(int keywordIndex) {
+    if (keywordIndex >= 0) {
+      _stopProcessing();
+      proceedToNextInterval();
+    }
+  }
+
+  /////////////////////////////////////////////////////////////////
+
   @override
   void initState() {
     super.initState();
@@ -33,16 +185,19 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
       );
       if (workout != null) {
         sets = workout.sets;
-        if (sets.isNotEmpty) {
+        if (sets.isNotEmpty && sets[currentSetIndex].intervals.isNotEmpty) {
           currentSetReps = sets[currentSetIndex].repetitions;
         }
       }
     }
+    loadNewKeyword(currentKeyword);
   }
 
   @override
   void dispose() {
     intervalTimer?.cancel();
+    _porcupineManager
+        ?.delete(); // Cancel Porcupine processing and release resources
     super.dispose();
   }
 
@@ -54,6 +209,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
         // No intervals defined, handle the case accordingly
         // For example, you could cancel the timer and perform any necessary actions
         intervalTimer?.cancel();
+        proceedToNextInterval();
         return;
       }
       final currentInterval = currentSet.intervals[currentIntervalIndex];
@@ -71,6 +227,8 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
 
     if (isRepsInterval) {
       intervalTimer?.cancel(); // Cancel the existing timer
+
+      _startProcessing(); // Start listening for the wake word
     } else {
       // For non-"reps" intervals, start the timer as before
       const oneSec = Duration(seconds: 1);
@@ -91,7 +249,12 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
 
   void proceedToNextInterval() {
     setState(() {
-      if (sets.isEmpty) {
+      if (isRepsInterval) {
+        _stopProcessing();
+      } else
+        intervalTimer?.cancel();
+
+      if (sets.isEmpty || sets[currentSetIndex].intervals.isEmpty) {
         // No sets available, workout completed
         currentSetIndex = 0;
         currentIntervalIndex = 0;
@@ -135,8 +298,6 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
         }
       } else {
         // Workout completed
-        currentSetIndex = 0;
-        currentIntervalIndex = 0;
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
@@ -176,8 +337,10 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
 
   void navigateToPreviousSet() {
     setState(() {
-      // Stop timer if it's running
-      intervalTimer?.cancel();
+      if (isRepsInterval) {
+        _stopProcessing();
+      } else
+        intervalTimer?.cancel();
       if (currentSetIndex > 0) {
         currentSetIndex--;
         currentIntervalIndex = 0;
@@ -188,7 +351,10 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
 
   void navigateToPreviousInterval() {
     setState(() {
-      intervalTimer?.cancel();
+      if (isRepsInterval) {
+        _stopProcessing();
+      } else
+        intervalTimer?.cancel();
       if (currentIntervalIndex > 0) {
         currentIntervalIndex--;
         startIntervalTimer();
@@ -212,14 +378,16 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
     if (sets.isNotEmpty) {
       int currentInterval = 0;
 
-      for (var i = 0; i < currentSetIndex; i++) {
+      for (var i = 0;
+          i < currentSetIndex && sets[i].intervals.isNotEmpty;
+          i++) {
         currentInterval += sets[i].intervals.length;
       }
-      currentInterval += currentIntervalIndex;
+      currentInterval += currentIntervalIndex + 1;
 
       int totalIntervals = 0;
 
-      for (var i = 0; i < sets.length; i++) {
+      for (var i = 0; i < sets.length && sets[i].intervals.isNotEmpty; i++) {
         totalIntervals += sets[i].intervals.length;
       }
 
@@ -259,9 +427,11 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
                       ),
                       SizedBox(height: 8),
                       Text(
-                        sets.isNotEmpty && currentSetIndex < sets.length
+                        sets.isNotEmpty &&
+                                currentSetIndex < sets.length &&
+                                sets[currentSetIndex].intervals.isNotEmpty
                             ? 'Interval ${currentIntervalIndex + 1}/${sets[currentSetIndex].intervals.length}'
-                            : 'No intervals available',
+                            : 'No intervals',
                         style: TextStyle(fontSize: 16, color: textColor),
                       ),
                     ],
@@ -342,13 +512,19 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
               ),
               Center(
                 child: isTimerRunning && isRepsInterval
-                    ? Text(
-                        'Reps: ${sets[currentSetIndex].intervals[currentIntervalIndex].reps}',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            fontSize: MediaQuery.of(context).size.height * 0.06,
-                            fontWeight: FontWeight.bold,
-                            color: textColor),
+                    ? Column(
+                        children: [
+                          Text(
+                            'Reps: ${sets[currentSetIndex].intervals[currentIntervalIndex].reps}',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize:
+                                  MediaQuery.of(context).size.height * 0.06,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                            ),
+                          ),
+                        ],
                       )
                     : SizedBox(),
               ),
