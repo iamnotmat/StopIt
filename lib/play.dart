@@ -343,6 +343,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
         intervalTimer?.cancel();
       if (currentSetIndex > 0) {
         currentSetIndex--;
+        currentSetReps = sets[currentSetIndex].repetitions;
         currentIntervalIndex = 0;
         startIntervalTimer();
       }
@@ -360,6 +361,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
         startIntervalTimer();
       } else if (currentSetIndex > 0) {
         currentSetIndex--;
+        currentSetReps = sets[currentSetIndex].repetitions;
         currentIntervalIndex = sets[currentSetIndex].intervals.length - 1;
         startIntervalTimer();
       }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'edit_workout.dart';
 import 'play.dart';
 
@@ -23,25 +24,61 @@ class MainWidget extends StatefulWidget {
 }
 
 class _MainWidgetState extends State<MainWidget> {
+  SharedPreferences? prefs;
+
   @override
   void initState() {
     super.initState();
+    loadWorkouts();
+  }
+
+  Future<void> loadWorkouts() async {
+    prefs = await SharedPreferences.getInstance();
+    final workoutKeys = prefs!.getStringList('workoutKeys') ?? [];
+
+    setState(() {
+      workouts = workoutKeys
+          .map((key) => Workout(
+                key: Key(key),
+                index: prefs!.getInt('workoutIndex_$key') ?? 0,
+                removeWorkout: removeWorkout,
+                name: prefs!.getString('workoutName_$key') ?? '',
+              ))
+          .toList();
+    });
+
+    workouts.sort((a, b) => a.index.compareTo(b.index));
+  }
+
+  Future<void> saveWorkout(Workout workout) async {
+    prefs ??= await SharedPreferences.getInstance();
+    final workoutKeys =
+        workouts.map((workout) => workout.key.toString()).toList();
+    await prefs!.setStringList('workoutKeys', workoutKeys);
+    await prefs!.setString('workoutName_${workout.key}', workout.name);
+    await prefs!.setInt('workoutIndex_${workout.key}', workout.index);
   }
 
   void addWorkout() {
     setState(() {
-      workouts.add(Workout(
+      final workout = Workout(
         key: UniqueKey(),
-        index: workouts.length, // Assign the index of the workout
+        index: workouts.length,
         removeWorkout: removeWorkout,
         name: 'Workout ${workouts.length}',
-      ));
+      );
+      workouts.add(workout);
+      saveWorkout(workout);
     });
   }
 
   void removeWorkout(Workout workout) {
     setState(() {
       workouts.remove(workout);
+      prefs!.remove('workoutName_${workout.key}');
+      final workoutKeys =
+          workouts.map((workout) => workout.key.toString()).toList();
+      prefs!.setStringList('workoutKeys', workoutKeys);
     });
   }
 
@@ -52,6 +89,10 @@ class _MainWidgetState extends State<MainWidget> {
       }
       final workout = workouts.removeAt(oldIndex);
       workouts.insert(newIndex, workout);
+      for (var i = 0; i < workouts.length; i++) {
+        workouts[i].index = i;
+        saveWorkout(workouts[i]);
+      }
     });
   }
 
@@ -139,7 +180,7 @@ class Workout extends StatefulWidget {
     required this.name,
   }) : super(key: key);
 
-  final int index;
+  int index;
   String name;
   List<WorkoutSet> sets = [];
   final Function(Workout) removeWorkout;
