@@ -9,9 +9,9 @@ import 'package:porcupine_flutter/porcupine_manager.dart';
 import 'package:porcupine_flutter/porcupine_error.dart';
 
 class PlayWorkoutPage extends StatefulWidget {
-  final Key? workoutKey;
+  final int? workoutId;
 
-  PlayWorkoutPage({this.workoutKey});
+  PlayWorkoutPage({this.workoutId});
 
   @override
   _PlayWorkoutPageState createState() => _PlayWorkoutPageState();
@@ -178,9 +178,9 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.workoutKey != null) {
+    if (widget.workoutId != null) {
       final Workout? workout = workouts.firstWhere(
-        (workout) => workout.key == widget.workoutKey,
+        (workout) => workout.Id == widget.workoutId,
         orElse: null,
       );
       if (workout != null) {
@@ -214,7 +214,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
       }
       final currentInterval = currentSet.intervals[currentIntervalIndex];
       secondsRemaining = currentInterval.duration;
-      isRepsInterval = currentInterval.type == IntervalType.reps;
+      isRepsInterval = currentInterval.type == "Reps";
     });
 
     // If there's no intervals
@@ -409,7 +409,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
             children: [
               Center(
                 child: Text(
-                  '${workouts.firstWhere((workout) => workout.key == widget.workoutKey).name}',
+                  '${workouts.firstWhere((workout) => workout.Id == widget.workoutId).name}',
                   style: TextStyle(
                     fontSize: MediaQuery.of(context).size.height * 0.03,
                     fontWeight: FontWeight.bold,

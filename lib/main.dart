@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'Save/save_workout.dart';
 import 'edit_workout.dart';
 import 'play.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await loadPersistant(workouts); // Load workouts from SharedPreferences
+
   runApp(MyApp());
 }
 
@@ -17,68 +21,41 @@ class MyApp extends StatelessWidget {
 }
 
 List<Workout> workouts = [];
+int nextWorkoutId = 0; // Track the next available workout ID
 
 class MainWidget extends StatefulWidget {
   @override
   _MainWidgetState createState() => _MainWidgetState();
+
+  static _MainWidgetState of(BuildContext context) =>
+      context.findAncestorStateOfType<_MainWidgetState>()!;
 }
 
 class _MainWidgetState extends State<MainWidget> {
-  SharedPreferences? prefs;
-
   @override
   void initState() {
     super.initState();
-    loadWorkouts();
-  }
-
-  Future<void> loadWorkouts() async {
-    prefs = await SharedPreferences.getInstance();
-    final workoutKeys = prefs!.getStringList('workoutKeys') ?? [];
-
-    setState(() {
-      workouts = workoutKeys
-          .map((key) => Workout(
-                key: Key(key),
-                index: prefs!.getInt('workoutIndex_$key') ?? 0,
-                removeWorkout: removeWorkout,
-                name: prefs!.getString('workoutName_$key') ?? '',
-              ))
-          .toList();
-    });
-
-    workouts.sort((a, b) => a.index.compareTo(b.index));
-  }
-
-  Future<void> saveWorkout(Workout workout) async {
-    prefs ??= await SharedPreferences.getInstance();
-    final workoutKeys =
-        workouts.map((workout) => workout.key.toString()).toList();
-    await prefs!.setStringList('workoutKeys', workoutKeys);
-    await prefs!.setString('workoutName_${workout.key}', workout.name);
-    await prefs!.setInt('workoutIndex_${workout.key}', workout.index);
+    loadPersistant(workouts);
   }
 
   void addWorkout() {
     setState(() {
       final workout = Workout(
         key: UniqueKey(),
+        Id: nextWorkoutId,
         index: workouts.length,
-        removeWorkout: removeWorkout,
         name: 'Workout ${workouts.length}',
       );
+      nextWorkoutId++;
       workouts.add(workout);
-      saveWorkout(workout);
+      savePersistant(workout);
     });
   }
 
   void removeWorkout(Workout workout) {
     setState(() {
       workouts.remove(workout);
-      prefs!.remove('workoutName_${workout.key}');
-      final workoutKeys =
-          workouts.map((workout) => workout.key.toString()).toList();
-      prefs!.setStringList('workoutKeys', workoutKeys);
+      removePersistant(workout);
     });
   }
 
@@ -91,7 +68,6 @@ class _MainWidgetState extends State<MainWidget> {
       workouts.insert(newIndex, workout);
       for (var i = 0; i < workouts.length; i++) {
         workouts[i].index = i;
-        saveWorkout(workouts[i]);
       }
     });
   }
@@ -138,9 +114,7 @@ class _MainWidgetState extends State<MainWidget> {
             Expanded(
               child: ReorderableListView(
                 onReorder: onReorder,
-                children: workouts.map((workout) {
-                  return workout;
-                }).toList(),
+                children: workouts,
               ),
             ),
             SizedBox(
@@ -173,17 +147,19 @@ class _MainWidgetState extends State<MainWidget> {
 }
 
 class Workout extends StatefulWidget {
-  Workout({
-    Key? key,
-    required this.index,
-    required this.removeWorkout,
-    required this.name,
-  }) : super(key: key);
-
-  int index;
+  final int Id;
   String name;
-  List<WorkoutSet> sets = [];
-  final Function(Workout) removeWorkout;
+  int index;
+  final List<WorkoutSet> sets;
+
+  Workout({
+    required Key key, // Add a Key parameter to the constructor
+    required this.Id,
+    required this.name,
+    required this.index,
+    List<WorkoutSet>? sets,
+  })  : sets = sets ?? [],
+        super(key: key); // Pass the key to the super constructor
 
   @override
   _WorkoutState createState() => _WorkoutState();
@@ -196,7 +172,8 @@ class _WorkoutState extends State<Workout> {
     Navigator.push(
       context,
       MaterialPageRoute(
-          builder: (context) => WorkoutDesignPage(workoutKey: widget.key)),
+        builder: (context) => WorkoutDesignPage(workoutId: widget.Id),
+      ),
     );
   }
 
@@ -204,7 +181,8 @@ class _WorkoutState extends State<Workout> {
     Navigator.push(
       context,
       MaterialPageRoute(
-          builder: (context) => PlayWorkoutPage(workoutKey: widget.key)),
+        builder: (context) => PlayWorkoutPage(workoutId: widget.Id),
+      ),
     );
   }
 
@@ -214,14 +192,9 @@ class _WorkoutState extends State<Workout> {
     });
   }
 
-  void removeWorkout() {
-    widget.removeWorkout(this.widget);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
-      key: widget.key,
       margin: EdgeInsets.all(8.0),
       padding: EdgeInsets.all(16.0),
       decoration: BoxDecoration(
@@ -264,7 +237,11 @@ class _WorkoutState extends State<Workout> {
                         flex: 1,
                         child: IconButton(
                           icon: Icon(Icons.remove_circle),
-                          onPressed: removeWorkout,
+                          onPressed: () {
+                            // Call the removeWorkout method from the parent widget
+                            // and pass the workout to be removed.
+                            MainWidget.of(context).removeWorkout(widget);
+                          },
                         ),
                       ),
                       Expanded(

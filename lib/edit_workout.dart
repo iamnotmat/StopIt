@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'Save/save_workout.dart';
 import 'main.dart';
 
 void main() {
@@ -13,17 +14,18 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.orange,
       ),
-      home: WorkoutDesignPage(workoutKey: UniqueKey()),
+      home: WorkoutDesignPage(workoutId: 0),
     );
   }
 }
 
 List<WorkoutSet> sets = []; // Initialize the sets list
+int _workoutId = 0;
 
 class WorkoutDesignPage extends StatefulWidget {
-  Key? workoutKey; // Add the workout index parameter
+  final int workoutId; // Add the workout index parameter
 
-  WorkoutDesignPage({this.workoutKey});
+  WorkoutDesignPage({required this.workoutId});
 
   @override
   _WorkoutDesignPageState createState() => _WorkoutDesignPageState();
@@ -37,10 +39,12 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
     super.initState();
     // Retrieve the selected workout using the provided workout index
     final selectedWorkout =
-        workouts.firstWhere((workout) => workout.key == widget.workoutKey);
+        workouts.firstWhere((workout) => workout.Id == widget.workoutId);
     // Initialize the sets list with the sets from the selected workout
     sets = selectedWorkout.sets.cast<WorkoutSet>();
     nameController.text = selectedWorkout.name;
+
+    _workoutId = widget.workoutId;
   }
 
   @override
@@ -61,8 +65,10 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
               onChanged: (value) {
                 setState(() {
                   workouts
-                      .firstWhere((workout) => workout.key == widget.workoutKey)
+                      .firstWhere((workout) => workout.Id == widget.workoutId)
                       .name = value;
+                  savePersistant(workouts
+                      .firstWhere((workout) => workout.Id == widget.workoutId));
                 });
               },
               decoration: InputDecoration(
@@ -94,8 +100,13 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
                   SetWidget(
                     key: UniqueKey(),
                     set: set,
+                    workoutId: widget.workoutId, // Pass the workoutId parameter
                     onDelete: () {
                       setState(() {
+                        removeSet(
+                            workouts.firstWhere(
+                                (workout) => workout.Id == widget.workoutId),
+                            set);
                         sets.removeAt(index);
                       });
                     },
@@ -117,6 +128,8 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
         onPressed: () {
           setState(() {
             sets.add(WorkoutSet());
+            savePersistant(workouts
+                .firstWhere((workout) => workout.Id == widget.workoutId));
           });
         },
         child: Icon(Icons.add),
@@ -132,7 +145,11 @@ class WorkoutSet {
   List<WorkoutInterval> intervals = [];
   int repetitions = 1;
 
-  WorkoutSet({this.name = '', this.repetitions = 1});
+  WorkoutSet({
+    this.name = '',
+    this.repetitions = 1,
+    List<WorkoutInterval>? intervals,
+  }) : intervals = intervals ?? [];
 
   WorkoutSet.fromJson(Map<String, dynamic> json)
       : name = json['name'],
@@ -161,22 +178,21 @@ class WorkoutSet {
 
 class WorkoutInterval {
   String name = '';
-  IntervalType type;
-  int duration; // in seconds
-  int reps;
+  String type = "Time";
+  int duration = 0; // in seconds
+  int reps = 0;
   int repetitions = 1;
 
-  WorkoutInterval({
-    this.type = IntervalType.time,
-    this.duration = 0,
-    this.reps = 0,
-    this.name = '',
-    this.repetitions = 1,
-  });
+  WorkoutInterval(
+      {this.type = "Time",
+      this.duration = 0,
+      this.reps = 0,
+      this.name = '',
+      this.repetitions = 1});
 
   WorkoutInterval.fromJson(Map<String, dynamic> json)
       : name = json['name'],
-        type = IntervalType.values[json['type']],
+        type = json['type'],
         duration = json['duration'],
         reps = json['reps'],
         repetitions = json['repetitions'];
@@ -184,7 +200,7 @@ class WorkoutInterval {
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'type': type.index,
+      'type': type,
       'duration': duration,
       'reps': reps,
       'repetitions': repetitions,
@@ -193,8 +209,7 @@ class WorkoutInterval {
 
   @override
   String toString() {
-    String typeText = type == IntervalType.time ? 'Time' : 'Reps';
-    if (type == IntervalType.time) {
+    if (type == "Time") {
       return '$name: $duration seconds';
     } else {
       return '$name: $reps reps';
@@ -202,17 +217,18 @@ class WorkoutInterval {
   }
 }
 
-enum IntervalType {
-  time,
-  reps,
-}
-
 class SetWidget extends StatefulWidget {
+  final Key? key;
   final WorkoutSet set;
+  final int workoutId; // Add the workoutId parameter
   final VoidCallback onDelete;
 
-  const SetWidget({Key? key, required this.set, required this.onDelete})
-      : super(key: key);
+  const SetWidget({
+    this.key,
+    required this.set,
+    required this.workoutId, // Pass the workoutId parameter
+    required this.onDelete,
+  });
 
   @override
   _SetWidgetState createState() => _SetWidgetState();
@@ -232,7 +248,7 @@ class _SetWidgetState extends State<SetWidget> {
   @override
   Widget build(BuildContext context) {
     return Card(
-      key: widget.key,
+      key: UniqueKey(),
       margin: EdgeInsets.all(10),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
@@ -248,6 +264,8 @@ class _SetWidgetState extends State<SetWidget> {
               onChanged: (value) {
                 setState(() {
                   widget.set.name = value;
+                  savePersistant(workouts
+                      .firstWhere((workout) => workout.Id == widget.workoutId));
                 });
               },
               decoration: InputDecoration(
@@ -289,6 +307,8 @@ class _SetWidgetState extends State<SetWidget> {
                       _repetitionsController.text =
                           widget.set.repetitions.toString();
                     }
+                    savePersistant(workouts.firstWhere(
+                        (workout) => workout.Id == widget.workoutId));
                   });
                 },
               ),
@@ -301,6 +321,8 @@ class _SetWidgetState extends State<SetWidget> {
                   onChanged: (value) {
                     setState(() {
                       widget.set.repetitions = int.tryParse(value) ?? 1;
+                      savePersistant(workouts.firstWhere(
+                          (workout) => workout.Id == widget.workoutId));
                     });
                   },
                   decoration: InputDecoration(
@@ -325,6 +347,8 @@ class _SetWidgetState extends State<SetWidget> {
                     widget.set.repetitions++;
                     _repetitionsController.text =
                         widget.set.repetitions.toString();
+                    savePersistant(workouts.firstWhere(
+                        (workout) => workout.Id == widget.workoutId));
                   });
                 },
               ),
@@ -343,6 +367,11 @@ class _SetWidgetState extends State<SetWidget> {
                         interval: interval,
                         onDelete: () {
                           setState(() {
+                            removeInterval(
+                                workouts.firstWhere((workout) =>
+                                    workout.Id == widget.workoutId),
+                                widget.set,
+                                interval);
                             widget.set.intervals.removeAt(index);
                           });
                         },
@@ -365,8 +394,10 @@ class _SetWidgetState extends State<SetWidget> {
             child: ElevatedButton(
               onPressed: () {
                 setState(() {
-                  widget.set.intervals
-                      .add(WorkoutInterval(type: IntervalType.time));
+                  widget.set.intervals.add(WorkoutInterval(
+                      type: "Time", duration: 0, reps: 0, name: ''));
+                  savePersistant(workouts
+                      .firstWhere((workout) => workout.Id == widget.workoutId));
                 });
               },
               style: ElevatedButton.styleFrom(
@@ -432,6 +463,8 @@ class _IntervalWidgetState extends State<IntervalWidget> {
           onChanged: (value) {
             setState(() {
               widget.interval.name = value;
+              savePersistant(
+                  workouts.firstWhere((workout) => workout.Id == _workoutId));
             });
           },
           decoration: InputDecoration(
@@ -443,39 +476,52 @@ class _IntervalWidgetState extends State<IntervalWidget> {
           children: [
             Text('Type:', style: TextStyle(color: Colors.white)),
             SizedBox(width: 10),
-            DropdownButton<IntervalType>(
+            DropdownButton<String>(
               value: widget.interval.type,
               onChanged: (value) {
                 setState(() {
                   widget.interval.type = value!;
+                  savePersistant(workouts
+                      .firstWhere((workout) => workout.Id == _workoutId));
                 });
               },
-              items: IntervalType.values
-                  .map((type) => DropdownMenuItem(
-                        value: type,
-                        child: Text(
-                          type == IntervalType.time ? 'Time' : 'Reps',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ))
-                  .toList(),
+              items: [
+                DropdownMenuItem(
+                  child: Text(
+                    'Time',
+                    style: TextStyle(
+                        color: Colors.white), // Set the text color to white
+                  ),
+                  value: 'Time',
+                ),
+                DropdownMenuItem(
+                  child: Text(
+                    'Reps',
+                    style: TextStyle(
+                        color: Colors.white), // Set the text color to white
+                  ),
+                  value: 'Reps',
+                ),
+              ],
               dropdownColor: Color(0xFF252525),
               underline: Container(),
             ),
             SizedBox(width: 10),
             Expanded(
               child: TextFormField(
-                controller: widget.interval.type == IntervalType.time
+                controller: widget.interval.type == "Time"
                     ? _durationController
                     : _repsController,
                 keyboardType: TextInputType.number,
                 onChanged: (value) {
                   setState(() {
-                    if (widget.interval.type == IntervalType.time) {
+                    if (widget.interval.type == "Time") {
                       widget.interval.duration = int.tryParse(value) ?? 0;
                     } else {
                       widget.interval.reps = int.tryParse(value) ?? 0;
                     }
+                    savePersistant(workouts
+                        .firstWhere((workout) => workout.Id == _workoutId));
                   });
                 },
                 style: TextStyle(color: Colors.white),
