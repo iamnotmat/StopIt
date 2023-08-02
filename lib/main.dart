@@ -44,7 +44,9 @@ class _MainWidgetState extends State<MainWidget> {
         key: UniqueKey(),
         Id: nextWorkoutId,
         index: workouts.length,
-        name: 'Workout ${workouts.length}',
+        name: 'Workout ${nextWorkoutId + 1}',
+        sets: [],
+        nextSetId: 0,
       );
       nextWorkoutId++;
       workouts.add(workout);
@@ -69,6 +71,7 @@ class _MainWidgetState extends State<MainWidget> {
       for (var i = 0; i < workouts.length; i++) {
         workouts[i].index = i;
       }
+      reorderWorkouts(oldIndex, newIndex);
     });
   }
 
@@ -91,21 +94,22 @@ class _MainWidgetState extends State<MainWidget> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // Add your logo widget here
-                  Icon(
-                    Icons.ac_unit, // Replace with your logo icon
-                    size: 50,
-                    color: Colors.white,
+                  Image.asset(
+                    'assets/Logo.png',
+                    width: 80,
+                    height: 50,
                   ),
-                  // Add your settings wheel widget here
-                  IconButton(
-                    icon: Icon(
-                      Icons.settings,
-                      color: Colors.white,
-                    ),
-                    onPressed: () {
-                      // Handle settings button press
-                    },
-                  ),
+
+                  // // Add your settings wheel widget here
+                  // IconButton(
+                  //   icon: Icon(
+                  //     Icons.settings,
+                  //     color: Colors.white,
+                  //   ),
+                  //   onPressed: () {
+                  //     // Handle settings button press
+                  //   },
+                  // ),
                 ],
               ),
             ),
@@ -151,6 +155,7 @@ class Workout extends StatefulWidget {
   String name;
   int index;
   final List<WorkoutSet> sets;
+  int nextSetId;
 
   Workout({
     required Key key, // Add a Key parameter to the constructor
@@ -158,6 +163,7 @@ class Workout extends StatefulWidget {
     required this.name,
     required this.index,
     List<WorkoutSet>? sets,
+    required this.nextSetId,
   })  : sets = sets ?? [],
         super(key: key); // Pass the key to the super constructor
 

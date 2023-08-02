@@ -1,5 +1,5 @@
-name: porcupine_demo
-description: Demonstrates how to use the porcupine plugin.
+name: StopIt
+description: A handy voice controlled stopwatch. 
 
 publish_to: 'none'
 
@@ -18,6 +18,7 @@ dependencies:
   path: ^1.8.0
   google_fonts: ^5.1.0
   get_storage: ^2.1.1
+  wakelock: ^0.6.2
 
 dev_dependencies:
   integration_test:
@@ -26,10 +27,18 @@ dev_dependencies:
     sdk: flutter
   lints: ^1.0.1
 
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/AppIcon.png"
+
 flutter:
   uses-material-design: true
   assets:
     - assets/
+    - assets/icons/
+    - assets/sounds/
+    - assets/Logo.png
     - assets/models/
     - assets/keywords/android/
     - assets/keywords/ios/
@@ -38,3 +47,5 @@ flutter:
     - assets/test_resources/audio_samples/
     - assets/test_resources/keyword_files/
     - assets/test_resources/model_files/
+
+

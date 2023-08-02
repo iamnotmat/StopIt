@@ -29,62 +29,65 @@ Future<void> loadPersistant(List<Workout> workouts) async {
 
     if (workoutName != null && workoutIndex != null) {
       List<WorkoutSet> sets = [];
+      int nextSetId = box.read('workout${workoutKey}nextSetId') ?? 0;
+      List<dynamic> setKeys = box.read('workout${workoutKey}setKeys') ?? [];
 
-      for (int i = 0;; i++) {
-        String? setName = box.read('workout${workoutKey}set${i}name');
+      for (String setKey in setKeys) {
+        String? setName = box.read('workout${workoutKey}set${setKey}name');
+        int setId = box.read('workout${workoutKey}set${setKey}id') ?? 0;
+        int setIndex = box.read('workout${workoutKey}set${setKey}index') ?? 0;
         int? setRepetitions =
-            box.read('workout${workoutKey}set${i}repetitions');
+            box.read('workout${workoutKey}set${setKey}repetitions');
+
+        // Load nextIntervalId
+        int nextIntervalId =
+            box.read('workout${workoutKey}set${setKey}nextIntervalId') ?? 0;
 
         if (setName != null && setRepetitions != null) {
           List<WorkoutInterval> intervals = [];
+          List<dynamic> intervalKeys =
+              box.read('workout${workoutKey}set${setKey}intervalKeys') ?? [];
 
-          for (int j = 0;; j++) {
-            String? intervalName =
-                box.read('workout${workoutKey}set${i}interval${j}name');
-            String? intervalType =
-                box.read('workout${workoutKey}set${i}interval${j}type');
+          for (String intervalKey in intervalKeys) {
+            int intervalId = box.read(
+                'workout${workoutKey}set${setKey}interval${intervalKey}id');
+            int intervalIndex = box.read(
+                'workout${workoutKey}set${setKey}interval${intervalKey}index');
+            String intervalName = box.read(
+                'workout${workoutKey}set${setKey}interval${intervalKey}name');
+            int intervalDuration = box.read(
+                'workout${workoutKey}set${setKey}interval${intervalKey}time');
+            int intervalRepetitions = box.read(
+                'workout${workoutKey}set${setKey}interval${intervalKey}reps');
+            String intervalType = box.read(
+                'workout${workoutKey}set${setKey}interval${intervalKey}type');
 
-            if (intervalName != null) {
-              int intervalDuration =
-                  box.read('workout${workoutKey}set${i}interval${j}time');
-              int intervalReps =
-                  box.read('workout${workoutKey}set${i}interval${j}reps');
-
-              // Check if intervalType is null and provide a default value if needed
-              String type =
-                  intervalType ?? ''; // Change the default value accordingly
-
-              WorkoutInterval interval;
-              if (type == 'Time') {
-                interval = WorkoutInterval(
-                  name: intervalName,
-                  type: type,
-                  duration: intervalDuration,
-                );
-              } else {
-                interval = WorkoutInterval(
-                  name: intervalName,
-                  type: type,
-                  reps: intervalReps,
-                );
-              }
-
-              intervals.add(interval);
-            } else {
-              break;
-            }
+            WorkoutInterval interval = WorkoutInterval(
+                key: UniqueKey(),
+                Id: intervalId,
+                name: intervalName,
+                index: intervalIndex,
+                duration: intervalDuration,
+                reps: intervalRepetitions,
+                type: intervalType);
+            intervals.add(interval);
           }
+          intervals.sort((a, b) => a.index.compareTo(b.index));
 
           WorkoutSet set = WorkoutSet(
-            name: setName,
-            repetitions: setRepetitions,
-            intervals: intervals,
-          );
+              key: UniqueKey(),
+              Id: setId,
+              name: setName,
+              repetitions: setRepetitions,
+              index: setIndex,
+              intervals: intervals,
+              nextIntervalId: nextIntervalId);
           sets.add(set);
         } else {
           break;
         }
       }
+      sets.sort((a, b) => a.index.compareTo(b.index));
 
       Workout workout = Workout(
         key: UniqueKey(),
@@ -92,11 +95,12 @@ Future<void> loadPersistant(List<Workout> workouts) async {
         name: workoutName,
         index: workoutIndex,
         sets: sets,
+        nextSetId: nextSetId,
       );
       workouts.add(workout);
     }
   }
-//  workouts.sort((a, b) => a.index.compareTo(b.index));
+  workouts.sort((a, b) => a.index.compareTo(b.index));
 }
 
 // Save the workout to the device
@@ -112,26 +116,57 @@ Future<void> savePersistant(Workout workout) async {
   // Save the index
   await box.write('workout${workout.Id}index', workout.index);
 
-  // Save the sets
-  for (int i = 0; i < workout.sets.length; i++) {
-    await box.write('workout${workout.Id}set${i}name', workout.sets[i].name);
+  // Save the nextSetId
+  await box.write('workout${workout.Id}nextSetId', workout.nextSetId);
+
+  // Save the setKeys
+  final setKeys = workout.sets.map((set) => set.Id.toString()).toList();
+  await box.write('workout${workout.Id}setKeys', setKeys);
+
+  // Save the set
+  for (int i = 0; i < setKeys.length; i++) {
     await box.write(
-        'workout${workout.Id}set${i}repetitions', workout.sets[i].repetitions);
+        'workout${workout.Id}set${setKeys[i]}name', workout.sets[i].name);
+    await box.write(
+        'workout${workout.Id}set${setKeys[i]}id', workout.sets[i].Id);
+    await box.write(
+        'workout${workout.Id}set${setKeys[i]}index', workout.sets[i].index);
+    await box.write('workout${workout.Id}set${setKeys[i]}repetitions',
+        workout.sets[i].repetitions);
 
-    for (int j = 0; j < workout.sets[i].intervals.length; j++) {
-      await box.write('workout${workout.Id}set${i}interval${j}name',
+    // Save the nextIntervalId
+    await box.write('workout${workout.Id}set${setKeys[i]}nextIntervalId',
+        workout.sets[i].nextIntervalId);
+
+    // Save the intervalKeys
+    final intervalKeys = workout.sets[i].intervals
+        .map((interval) => interval.Id.toString())
+        .toList();
+
+    await box.write(
+        'workout${workout.Id}set${setKeys[i]}intervalKeys', intervalKeys);
+
+    // Save the interval
+    for (int j = 0; j < intervalKeys.length; j++) {
+      await box.write(
+          'workout${workout.Id}set${setKeys[i]}interval${intervalKeys[j]}id',
+          workout.sets[i].intervals[j].Id);
+      await box.write(
+          'workout${workout.Id}set${setKeys[i]}interval${intervalKeys[j]}index',
+          workout.sets[i].intervals[j].index);
+      await box.write(
+          'workout${workout.Id}set${setKeys[i]}interval${intervalKeys[j]}name',
           workout.sets[i].intervals[j].name);
-
-      await box.write('workout${workout.Id}set${i}interval${j}type',
+      await box.write(
+          'workout${workout.Id}set${setKeys[i]}interval${intervalKeys[j]}type',
           workout.sets[i].intervals[j].type);
 
-      // Save time
-      await box.write('workout${workout.Id}set${i}interval${j}time',
-          workout.sets[i].intervals[j].duration!);
-
-      // Save reps
-      await box.write('workout${workout.Id}set${i}interval${j}reps',
-          workout.sets[i].intervals[j].reps!);
+      await box.write(
+          'workout${workout.Id}set${setKeys[i]}interval${intervalKeys[j]}time',
+          workout.sets[i].intervals[j].duration);
+      await box.write(
+          'workout${workout.Id}set${setKeys[i]}interval${intervalKeys[j]}reps',
+          workout.sets[i].intervals[j].reps);
     }
   }
 }
@@ -142,22 +177,32 @@ Future<void> removePersistant(Workout workout) async {
 
   await box.remove('workout${workout.Id}name');
   await box.remove('workout${workout.Id}index');
+  await box.remove('workout${workout.Id}nextSetId');
+
+  // Save indexes again
+  for (int i = 0; i < workouts.length; i++) {
+    await box.write('workout${workouts[i].Id}index', i);
+  }
 
   for (int i = 0; i < workout.sets.length; i++) {
-    await box.remove('workout${workout.Id}set${i}name');
-    await box.remove('workout${workout.Id}set${i}repetitions');
+    int setId = workout.sets[i].Id;
+    await box.remove('workout${workout.Id}set${setId}name');
+    await box.remove('workout${workout.Id}set${setId}index');
+    await box.remove('workout${workout.Id}set${setId}repetitions');
+    await box.remove('workout${workout.Id}set${setId}nextIntervalId');
 
     for (int j = 0; j < workout.sets[i].intervals.length; j++) {
-      await box.remove('workout${workout.Id}set${i}interval${j}name');
-      await box.remove('workout${workout.Id}set${i}interval${j}reps');
-
-      await box.remove('workout${workout.Id}set${i}interval${j}type');
-
-      if (workout.sets[i].intervals[j].duration != null) {
-        await box.remove('workout${workout.Id}set${i}interval${j}time');
-      } else {
-        await box.remove('workout${workout.Id}set${i}interval${j}reps');
-      }
+      int intervalId = workout.sets[i].intervals[j].Id;
+      await box
+          .remove('workout${workout.Id}set${setId}interval${intervalId}name');
+      await box
+          .remove('workout${workout.Id}set${setId}interval${intervalId}index');
+      await box
+          .remove('workout${workout.Id}set${setId}interval${intervalId}type');
+      await box
+          .remove('workout${workout.Id}set${setId}interval${intervalId}time');
+      await box
+          .remove('workout${workout.Id}set${setId}interval${intervalId}reps');
     }
   }
 }
@@ -165,43 +210,61 @@ Future<void> removePersistant(Workout workout) async {
 // Remove Set
 Future<void> removeSet(Workout workout, WorkoutSet set) async {
   for (int i = 0; i < workout.sets.length; i++) {
-    if (workout.sets[i] == set) {
+    if (workout.sets[i].Id == set.Id) {
       await box.remove('workout${workout.Id}set${i}name');
+      await box.remove('workout${workout.Id}set${i}index');
       await box.remove('workout${workout.Id}set${i}repetitions');
+      await box.remove('workout${workout.Id}set${i}nextIntervalId');
 
       for (int j = 0; j < workout.sets[i].intervals.length; j++) {
+        await box.remove('workout${workout.Id}set${i}interval${j}id');
+        await box.remove('workout${workout.Id}set${i}interval${j}index');
         await box.remove('workout${workout.Id}set${i}interval${j}name');
-        await box.remove('workout${workout.Id}set${i}interval${j}reps');
-
         await box.remove('workout${workout.Id}set${i}interval${j}type');
-
-        if (workout.sets[i].intervals[j].duration != null) {
-          await box.remove('workout${workout.Id}set${i}interval${j}time');
-        } else {
-          await box.remove('workout${workout.Id}set${i}interval${j}reps');
-        }
+        await box.remove('workout${workout.Id}set${i}interval${j}time');
+        await box.remove('workout${workout.Id}set${i}interval${j}reps');
       }
     }
   }
+
+  // Remove from the list
+  workout.sets.remove(set);
+
+  final setKeys = workout.sets.map((set) => set.Id.toString()).toList();
+  await box.write('workout${workout.Id}setKeys', setKeys);
 }
 
 // Remove Interval
 Future<void> removeInterval(
     Workout workout, WorkoutSet set, WorkoutInterval interval) async {
   for (int i = 0; i < workout.sets.length; i++) {
-    if (workout.sets[i] == set) {
+    if (workout.sets[i].Id == set.Id) {
       for (int j = 0; j < workout.sets[i].intervals.length; j++) {
         if (workout.sets[i].intervals[j] == interval) {
+          await box.remove('workout${workout.Id}set${i}interval${j}id');
+          await box.remove('workout${workout.Id}set${i}interval${j}index');
           await box.remove('workout${workout.Id}set${i}interval${j}name');
-          await box.remove('workout${workout.Id}set${i}interval${j}reps');
-
           await box.remove('workout${workout.Id}set${i}interval${j}type');
-
           await box.remove('workout${workout.Id}set${i}interval${j}time');
-
           await box.remove('workout${workout.Id}set${i}interval${j}reps');
         }
       }
+      workout.sets[i].intervals.remove(interval);
     }
+  }
+
+  final intervalKeys =
+      set.intervals.map((interval) => interval.Id.toString()).toList();
+  await box.write('workout${workout.Id}set${set.Id}intervalKeys', intervalKeys);
+}
+
+// Reorder workouts
+Future<void> reorderWorkouts(int oldIndex, int newIndex) async {
+  if (newIndex > oldIndex) {
+    newIndex -= 1;
+  }
+
+  for (int i = 0; i < workouts.length; i++) {
+    await box.write('workout${workouts[i].Id}index', i);
   }
 }

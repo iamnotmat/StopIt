@@ -107,7 +107,6 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
                             workouts.firstWhere(
                                 (workout) => workout.Id == widget.workoutId),
                             set);
-                        sets.removeAt(index);
                       });
                     },
                   ),
@@ -121,13 +120,27 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
             }
             final set = sets.removeAt(oldIndex);
             sets.insert(newIndex, set);
+            for (int i = 0; i < sets.length; i++) {
+              sets[i].index = i;
+            }
+            savePersistant(workouts
+                .firstWhere((workout) => workout.Id == widget.workoutId));
           });
         },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           setState(() {
-            sets.add(WorkoutSet());
+            sets.add(WorkoutSet(
+                key: UniqueKey(),
+                Id: workouts
+                    .firstWhere((workout) => workout.Id == widget.workoutId)
+                    .nextSetId,
+                index: sets.length,
+                nextIntervalId: 0));
+            workouts
+                .firstWhere((workout) => workout.Id == widget.workoutId)
+                .nextSetId++;
             savePersistant(workouts
                 .firstWhere((workout) => workout.Id == widget.workoutId));
           });
@@ -141,22 +154,33 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
 }
 
 class WorkoutSet {
+  final int Id;
+  int index;
   String name = '';
   List<WorkoutInterval> intervals = [];
   int repetitions = 1;
+  int nextIntervalId = 0;
 
-  WorkoutSet({
-    this.name = '',
-    this.repetitions = 1,
-    List<WorkoutInterval>? intervals,
-  }) : intervals = intervals ?? [];
+  WorkoutSet(
+      {required Key key,
+      required this.Id,
+      required this.index,
+      this.name = '',
+      this.repetitions = 1,
+      List<WorkoutInterval>? intervals,
+      required this.nextIntervalId})
+      : intervals = intervals ?? [];
 
   WorkoutSet.fromJson(Map<String, dynamic> json)
-      : name = json['name'],
-        intervals = (json['intervals'] as List<dynamic>)
-            .map((intervalJson) => WorkoutInterval.fromJson(intervalJson))
+      : Id = json['Id'],
+        index = json['index'],
+        name = json['name'],
+        intervals = json['intervals']
+            .map<WorkoutInterval>(
+                (interval) => WorkoutInterval.fromJson(interval))
             .toList(),
-        repetitions = json['repetitions'];
+        repetitions = json['repetitions'],
+        nextIntervalId = json['nextIntervalId'];
 
   Map<String, dynamic> toJson() {
     return {
@@ -173,47 +197,6 @@ class WorkoutSet {
       intervalsText += '   • ${interval.toString()}\n';
     }
     return '• $name (x$repetitions)\n$intervalsText';
-  }
-}
-
-class WorkoutInterval {
-  String name = '';
-  String type = "Time";
-  int duration = 0; // in seconds
-  int reps = 0;
-  int repetitions = 1;
-
-  WorkoutInterval(
-      {this.type = "Time",
-      this.duration = 0,
-      this.reps = 0,
-      this.name = '',
-      this.repetitions = 1});
-
-  WorkoutInterval.fromJson(Map<String, dynamic> json)
-      : name = json['name'],
-        type = json['type'],
-        duration = json['duration'],
-        reps = json['reps'],
-        repetitions = json['repetitions'];
-
-  Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'type': type,
-      'duration': duration,
-      'reps': reps,
-      'repetitions': repetitions,
-    };
-  }
-
-  @override
-  String toString() {
-    if (type == "Time") {
-      return '$name: $duration seconds';
-    } else {
-      return '$name: $reps reps';
-    }
   }
 }
 
@@ -235,8 +218,8 @@ class SetWidget extends StatefulWidget {
 }
 
 class _SetWidgetState extends State<SetWidget> {
-  TextEditingController _nameController = TextEditingController();
-  TextEditingController _repetitionsController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _repetitionsController = TextEditingController();
 
   @override
   void initState() {
@@ -261,9 +244,10 @@ class _SetWidgetState extends State<SetWidget> {
             title: TextFormField(
               controller: _nameController,
               style: TextStyle(color: Colors.white),
-              onChanged: (value) {
+              onChanged: (value) {},
+              onEditingComplete: () {
                 setState(() {
-                  widget.set.name = value;
+                  widget.set.name = _nameController.text;
                   savePersistant(workouts
                       .firstWhere((workout) => workout.Id == widget.workoutId));
                 });
@@ -372,7 +356,6 @@ class _SetWidgetState extends State<SetWidget> {
                                     workout.Id == widget.workoutId),
                                 widget.set,
                                 interval);
-                            widget.set.intervals.removeAt(index);
                           });
                         },
                       ),
@@ -386,6 +369,12 @@ class _SetWidgetState extends State<SetWidget> {
                 }
                 final interval = widget.set.intervals.removeAt(oldIndex);
                 widget.set.intervals.insert(newIndex, interval);
+
+                for (int i = 0; i < widget.set.intervals.length; i++) {
+                  widget.set.intervals[i].index = i;
+                }
+                savePersistant(workouts
+                    .firstWhere((workout) => workout.Id == widget.workoutId));
               });
             },
           ),
@@ -394,14 +383,19 @@ class _SetWidgetState extends State<SetWidget> {
             child: ElevatedButton(
               onPressed: () {
                 setState(() {
-                  widget.set.intervals.add(WorkoutInterval(
-                      type: "Time", duration: 0, reps: 0, name: ''));
+                  WorkoutInterval interval = WorkoutInterval(
+                    key: UniqueKey(),
+                    Id: widget.set.nextIntervalId,
+                    index: widget.set.intervals.length,
+                  );
+                  widget.set.intervals.add(interval);
+                  widget.set.nextIntervalId++;
                   savePersistant(workouts
                       .firstWhere((workout) => workout.Id == widget.workoutId));
                 });
               },
               style: ElevatedButton.styleFrom(
-                primary: Color(0xFFaf0404),
+                backgroundColor: Color(0xFFaf0404),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -412,6 +406,53 @@ class _SetWidgetState extends State<SetWidget> {
         ],
       ),
     );
+  }
+}
+
+class WorkoutInterval {
+  int Id;
+  int index;
+  String name = '';
+  String type = "Time";
+  int duration = 0; // in seconds
+  int reps = 0;
+
+  WorkoutInterval({
+    required Key key,
+    required this.Id,
+    required this.index,
+    this.type = "Time",
+    this.duration = 0,
+    this.reps = 0,
+    this.name = '',
+  });
+
+  WorkoutInterval.fromJson(Map<String, dynamic> json)
+      : Id = json['Id'],
+        name = json['name'],
+        type = json['type'],
+        duration = json['duration'] as int,
+        reps = json['reps'] as int,
+        index = json['index'];
+
+  Map<String, dynamic> toJson() {
+    return {
+      'Id': Id,
+      'name': name,
+      'type': type,
+      'duration': duration,
+      'reps': reps,
+      'index': index,
+    };
+  }
+
+  @override
+  String toString() {
+    if (type == "Time") {
+      return '$name: $duration sec';
+    } else {
+      return '$name: $reps reps';
+    }
   }
 }
 

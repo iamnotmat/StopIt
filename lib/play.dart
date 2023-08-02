@@ -4,6 +4,7 @@ import 'main.dart';
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
+import 'package:wakelock/wakelock.dart';
 import 'package:porcupine_flutter/porcupine.dart';
 import 'package:porcupine_flutter/porcupine_manager.dart';
 import 'package:porcupine_flutter/porcupine_error.dart';
@@ -190,6 +191,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
         }
       }
     }
+
     loadNewKeyword(currentKeyword);
   }
 
@@ -236,6 +238,12 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
         if (!isTimerPaused) {
           if (secondsRemaining > 0) {
             setState(() {
+              if (secondsRemaining <= 3) {
+                ///////////////////////////////////////////
+                //////////////////////////////////////////////
+                //////////////////////////////////////////////
+                //////////////////////////////////////////////
+              }
               secondsRemaining--;
             });
           } else {
@@ -313,6 +321,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
             ],
           ),
         );
+        Wakelock.disable();
       }
     });
   }
@@ -320,6 +329,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
   void startWorkout() {
     currentSetIndex = 0;
     currentIntervalIndex = 0;
+    Wakelock.enable();
     startIntervalTimer();
   }
 
@@ -341,8 +351,31 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
         _stopProcessing();
       } else
         intervalTimer?.cancel();
-      if (currentSetIndex > 0) {
-        currentSetIndex--;
+
+      if (currentSetIndex >= 0) {
+        if (currentSetReps < sets[currentSetIndex].repetitions) {
+          currentSetReps++;
+          currentIntervalIndex = sets[currentSetIndex].intervals.length - 1;
+          startIntervalTimer();
+        } else if (currentSetIndex > 0) {
+          currentSetIndex--;
+          currentSetReps = sets[currentSetIndex].repetitions;
+          currentIntervalIndex = 0;
+          startIntervalTimer();
+        }
+      }
+    });
+  }
+
+  void navigateToNextSet() {
+    setState(() {
+      if (isRepsInterval) {
+        _stopProcessing();
+      } else
+        intervalTimer?.cancel();
+
+      if (currentSetIndex < sets.length - 1) {
+        currentSetIndex++;
         currentSetReps = sets[currentSetIndex].repetitions;
         currentIntervalIndex = 0;
         startIntervalTimer();
@@ -356,20 +389,28 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
         _stopProcessing();
       } else
         intervalTimer?.cancel();
+
       if (currentIntervalIndex > 0) {
         currentIntervalIndex--;
         startIntervalTimer();
-      } else if (currentSetIndex > 0) {
-        currentSetIndex--;
-        currentSetReps = sets[currentSetIndex].repetitions;
-        currentIntervalIndex = sets[currentSetIndex].intervals.length - 1;
-        startIntervalTimer();
+      } else if (currentSetIndex >= 0) {
+        navigateToPreviousSet();
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    return OrientationBuilder(builder: (context, orientation) {
+      if (orientation == Orientation.portrait) {
+        return portraitLayout();
+      } else {
+        return landscapeLayout();
+      }
+    });
+  }
+
+  Widget portraitLayout() {
     // Define color constants
     final Color appBarColor = Color(0xFF252525);
     final Color primaryColor = Color(0xFFFF0000);
@@ -436,6 +477,15 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
                             : 'No intervals',
                         style: TextStyle(fontSize: 16, color: textColor),
                       ),
+                      SizedBox(height: 8),
+                      Text(
+                        sets.isNotEmpty &&
+                                currentSetIndex < sets.length &&
+                                sets[currentSetIndex].intervals.isNotEmpty
+                            ? 'Rep ${sets[currentSetIndex].repetitions - currentSetReps + 1}/${sets[currentSetIndex].repetitions}'
+                            : '',
+                        style: TextStyle(fontSize: 16, color: textColor),
+                      )
                     ],
                   ),
                   Row(
@@ -456,7 +506,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
                         color: primaryColor,
                       ),
                       IconButton(
-                        onPressed: proceedToNextInterval,
+                        onPressed: navigateToNextSet,
                         icon: Icon(Icons.skip_next),
                         color: primaryColor,
                       ),
@@ -533,6 +583,198 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
             ],
           ),
         ),
+      ),
+      bottomNavigationBar: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: ElevatedButton(
+          onPressed: sets.isNotEmpty
+              ? currentSetIndex == 0 &&
+                      currentIntervalIndex == 0 &&
+                      !isTimerRunning
+                  ? startWorkout
+                  : isTimerPaused
+                      ? resumeTimer
+                      : pauseTimer
+              : null,
+          child: Text(
+            currentSetIndex == 0 && currentIntervalIndex == 0 && !isTimerRunning
+                ? 'Start Workout'
+                : isTimerPaused
+                    ? 'Resume'
+                    : 'Pause',
+            style: TextStyle(color: Colors.white),
+          ),
+          style: ElevatedButton.styleFrom(
+            primary: primaryColor,
+            minimumSize: Size(double.infinity, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16.0),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget landscapeLayout() {
+    // Define color constants
+    final Color appBarColor = Color(0xFF252525);
+    final Color primaryColor = Color(0xFFFF0000);
+    final Color accentColor = Color(0xFFAF0404);
+    final Color textColor = Color(0xFF414141);
+
+    double progress = 0.0;
+    if (sets.isNotEmpty) {
+      int currentInterval = 0;
+
+      for (var i = 0;
+          i < currentSetIndex && sets[i].intervals.isNotEmpty;
+          i++) {
+        currentInterval += sets[i].intervals.length;
+      }
+      currentInterval += currentIntervalIndex + 1;
+
+      int totalIntervals = 0;
+
+      for (var i = 0; i < sets.length && sets[i].intervals.isNotEmpty; i++) {
+        totalIntervals += sets[i].intervals.length;
+      }
+
+      progress = currentInterval / totalIntervals;
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Play Workout'),
+        backgroundColor: appBarColor,
+      ),
+      body: Row(
+        children: [
+          // Interval Information
+          Expanded(
+            flex: 1,
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Set ${currentSetIndex + 1}/${sets.length}',
+                    style: TextStyle(fontSize: 16, color: textColor),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    sets.isNotEmpty &&
+                            currentSetIndex < sets.length &&
+                            sets[currentSetIndex].intervals.isNotEmpty
+                        ? 'Interval ${currentIntervalIndex + 1}/${sets[currentSetIndex].intervals.length}'
+                        : 'No intervals',
+                    style: TextStyle(fontSize: 16, color: textColor),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    sets.isNotEmpty &&
+                            currentSetIndex < sets.length &&
+                            sets[currentSetIndex].intervals.isNotEmpty
+                        ? 'Rep ${sets[currentSetIndex].repetitions - currentSetReps + 1}/${sets[currentSetIndex].repetitions}'
+                        : '',
+                    style: TextStyle(fontSize: 16, color: textColor),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Timer Information
+          Expanded(
+            flex: 1,
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Center(
+                    child: isTimerRunning && !isRepsInterval
+                        ? Text(
+                            secondsRemaining.toString(),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize:
+                                  MediaQuery.of(context).size.height * 0.1,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                            ),
+                          )
+                        : SizedBox(),
+                  ),
+                  Center(
+                    child: isTimerRunning && isRepsInterval
+                        ? Column(
+                            children: [
+                              Text(
+                                'Reps: ${sets[currentSetIndex].intervals[currentIntervalIndex].reps}',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize:
+                                      MediaQuery.of(context).size.height * 0.06,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                ),
+                              ),
+                            ],
+                          )
+                        : SizedBox(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Navigation Buttons
+          Expanded(
+            flex: 1,
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      IconButton(
+                        onPressed: navigateToPreviousSet,
+                        icon: Icon(Icons.skip_previous),
+                        color: primaryColor,
+                      ),
+                      IconButton(
+                        onPressed: navigateToPreviousInterval,
+                        icon: Icon(Icons.navigate_before),
+                        color: primaryColor,
+                      ),
+                      IconButton(
+                        onPressed: proceedToNextInterval,
+                        icon: Icon(Icons.navigate_next),
+                        color: primaryColor,
+                      ),
+                      IconButton(
+                        onPressed: navigateToNextSet,
+                        icon: Icon(Icons.skip_next),
+                        color: primaryColor,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  CircularProgressIndicator(
+                    value: progress,
+                    backgroundColor: Colors.grey,
+                    valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: Padding(
         padding: EdgeInsets.all(16.0),
