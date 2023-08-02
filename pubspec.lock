@@ -9,6 +9,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.11.0"
+  beep_player:
+    dependency: "direct main"
+    description:
+      name: beep_player
+      sha256: "7df257689a8e294485923797aa1f39147be833f05f8d8c567e06cbb9186fd54e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.1"
   boolean_selector:
     dependency: transitive
     description:

@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
 import 'package:wakelock/wakelock.dart';
+import 'package:beep_player/beep_player.dart';
 import 'package:porcupine_flutter/porcupine.dart';
 import 'package:porcupine_flutter/porcupine_manager.dart';
 import 'package:porcupine_flutter/porcupine_error.dart';
@@ -28,6 +29,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
   Timer? intervalTimer;
   int currentIntervalIndex = 0;
   bool isRepsInterval = false; // Flag to track "reps" intervals
+  BeepFile beep = BeepFile('assets/sounds/beep07.mp3');
 
   // Porcupine variables
   final String accessKey =
@@ -169,6 +171,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
 // Function called when wake word is detected
   void wakeWordCallback(int keywordIndex) {
     if (keywordIndex >= 0) {
+      BeepPlayer.play(beep);
       _stopProcessing();
       proceedToNextInterval();
     }
@@ -191,7 +194,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
         }
       }
     }
-
+    BeepPlayer.load(beep);
     loadNewKeyword(currentKeyword);
   }
 
@@ -236,9 +239,10 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
       const oneSec = Duration(seconds: 1);
       intervalTimer = Timer.periodic(oneSec, (timer) {
         if (!isTimerPaused) {
-          if (secondsRemaining > 0) {
+          if (secondsRemaining > 1) {
             setState(() {
-              if (secondsRemaining <= 3) {
+              if (secondsRemaining <= 4) {
+                BeepPlayer.play(beep);
                 ///////////////////////////////////////////
                 //////////////////////////////////////////////
                 //////////////////////////////////////////////
@@ -420,19 +424,18 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
     double progress = 0.0;
     if (sets.isNotEmpty) {
       int currentInterval = 0;
-
-      for (var i = 0;
-          i < currentSetIndex && sets[i].intervals.isNotEmpty;
-          i++) {
-        currentInterval += sets[i].intervals.length;
-      }
-      currentInterval += currentIntervalIndex + 1;
-
       int totalIntervals = 0;
 
       for (var i = 0; i < sets.length && sets[i].intervals.isNotEmpty; i++) {
-        totalIntervals += sets[i].intervals.length;
+        if (i < currentSetIndex)
+          currentInterval += sets[i].intervals.length * sets[i].repetitions;
+
+        totalIntervals += sets[i].intervals.length * sets[i].repetitions;
       }
+      currentInterval += (sets[currentSetIndex].repetitions - currentSetReps) *
+              sets[currentSetIndex].intervals.length +
+          currentIntervalIndex +
+          1;
 
       progress = currentInterval / totalIntervals;
     }
@@ -458,7 +461,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
                   ),
                 ),
               ),
-              SizedBox(height: 16),
+              SizedBox(height: 50),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -466,7 +469,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
                     children: [
                       Text(
                         'Set ${currentSetIndex + 1}/${sets.length}',
-                        style: TextStyle(fontSize: 16, color: textColor),
+                        style: TextStyle(fontSize: 24, color: textColor),
                       ),
                       SizedBox(height: 8),
                       Text(
@@ -475,7 +478,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
                                 sets[currentSetIndex].intervals.isNotEmpty
                             ? 'Interval ${currentIntervalIndex + 1}/${sets[currentSetIndex].intervals.length}'
                             : 'No intervals',
-                        style: TextStyle(fontSize: 16, color: textColor),
+                        style: TextStyle(fontSize: 24, color: textColor),
                       ),
                       SizedBox(height: 8),
                       Text(
@@ -484,11 +487,29 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
                                 sets[currentSetIndex].intervals.isNotEmpty
                             ? 'Rep ${sets[currentSetIndex].repetitions - currentSetReps + 1}/${sets[currentSetIndex].repetitions}'
                             : '',
-                        style: TextStyle(fontSize: 16, color: textColor),
+                        style: TextStyle(fontSize: 24, color: textColor),
                       )
                     ],
                   ),
-                  Row(
+                  SizedBox(
+                    child: CircularProgressIndicator(
+                      value: progress,
+                      backgroundColor: Colors.grey,
+                      valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                      strokeWidth: 15,
+                    ),
+                    height: MediaQuery.of(context).size.width * 0.2,
+                    width: MediaQuery.of(context).size.width * 0.2,
+                  )
+                ],
+              ),
+              SizedBox(height: 80),
+              // Navigation buttons
+              Center(
+                child: Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment
+                        .spaceEvenly, // Adjust the alignment as needed
                     children: [
                       IconButton(
                         onPressed: navigateToPreviousSet,
@@ -510,15 +531,9 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
                         icon: Icon(Icons.skip_next),
                         color: primaryColor,
                       ),
-                      SizedBox(width: 16),
-                      CircularProgressIndicator(
-                        value: progress,
-                        backgroundColor: Colors.grey,
-                        valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
-                      )
                     ],
                   ),
-                ],
+                ),
               ),
               // Set and Interval name
               SizedBox(height: 50),
@@ -548,7 +563,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
                           color: textColor),
                     ))
                   : SizedBox(),
-              SizedBox(height: 100),
+              SizedBox(height: 80),
               Center(
                 child: isTimerRunning && !isRepsInterval
                     ? Text(
@@ -652,7 +667,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
         children: [
           // Interval Information
           Expanded(
-            flex: 1,
+            flex: 0,
             child: Padding(
               padding: EdgeInsets.all(16.0),
               child: Column(
@@ -661,7 +676,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
                 children: [
                   Text(
                     'Set ${currentSetIndex + 1}/${sets.length}',
-                    style: TextStyle(fontSize: 16, color: textColor),
+                    style: TextStyle(fontSize: 24, color: textColor),
                   ),
                   SizedBox(height: 8),
                   Text(
@@ -670,7 +685,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
                             sets[currentSetIndex].intervals.isNotEmpty
                         ? 'Interval ${currentIntervalIndex + 1}/${sets[currentSetIndex].intervals.length}'
                         : 'No intervals',
-                    style: TextStyle(fontSize: 16, color: textColor),
+                    style: TextStyle(fontSize: 24, color: textColor),
                   ),
                   SizedBox(height: 8),
                   Text(
@@ -679,7 +694,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
                             sets[currentSetIndex].intervals.isNotEmpty
                         ? 'Rep ${sets[currentSetIndex].repetitions - currentSetReps + 1}/${sets[currentSetIndex].repetitions}'
                         : '',
-                    style: TextStyle(fontSize: 16, color: textColor),
+                    style: TextStyle(fontSize: 24, color: textColor),
                   ),
                 ],
               ),
@@ -717,7 +732,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize:
-                                      MediaQuery.of(context).size.height * 0.06,
+                                      MediaQuery.of(context).size.height * 0.12,
                                   fontWeight: FontWeight.bold,
                                   color: textColor,
                                 ),
@@ -734,7 +749,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
           Expanded(
             flex: 1,
             child: Padding(
-              padding: EdgeInsets.all(16.0),
+              padding: EdgeInsets.all(10.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -764,12 +779,29 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
                       ),
                     ],
                   ),
-                  SizedBox(height: 16),
-                  CircularProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.grey,
-                    valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
-                  ),
+                ],
+              ),
+            ),
+          ),
+          // Circular progress bar
+          Expanded(
+            flex: 1,
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    child: CircularProgressIndicator(
+                      value: progress,
+                      backgroundColor: Colors.grey,
+                      valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                      strokeWidth: 20,
+                    ),
+                    height: MediaQuery.of(context).size.width * 0.1,
+                    width: MediaQuery.of(context).size.width * 0.1,
+                  )
                 ],
               ),
             ),

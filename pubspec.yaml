@@ -18,6 +18,7 @@ dependencies:
   path: ^1.8.0
   google_fonts: ^5.1.0
   get_storage: ^2.1.1
+  beep_player: ^0.0.1
   wakelock: ^0.6.2
 
 dev_dependencies:
