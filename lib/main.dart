@@ -54,6 +54,22 @@ class _MainWidgetState extends State<MainWidget> {
     });
   }
 
+  void duplicateWorkout(BuildContext context, Workout workout) {
+    setState(() {
+      final duplicatedWorkout = Workout(
+        key: UniqueKey(),
+        Id: nextWorkoutId,
+        index: workouts.length,
+        name: 'Workout ${nextWorkoutId + 1}',
+        sets: List.from(workout.sets),
+        nextSetId: workout.nextSetId,
+      );
+      nextWorkoutId++;
+      workouts.add(duplicatedWorkout);
+      savePersistant(duplicatedWorkout);
+    });
+  }
+
   void removeWorkout(BuildContext context, Workout workout) {
     showDialog(
       context: context,
@@ -305,6 +321,19 @@ class _WorkoutState extends State<Workout> {
                           icon: Icon(Icons.play_arrow),
                           onPressed: () {
                             playWorkout(context, widget.index);
+                          },
+                        ),
+                      ),
+                      Expanded(
+                        flex: 1,
+                        child: IconButton(
+                          icon:
+                              Icon(Icons.copy), // Add the copy (duplicate) icon
+                          onPressed: () {
+                            // Call the duplicateWorkout method from the parent widget
+                            // and pass the workout to be duplicated.
+                            MainWidget.of(context)
+                                .duplicateWorkout(context, widget);
                           },
                         ),
                       ),

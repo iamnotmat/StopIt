@@ -243,10 +243,6 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
             setState(() {
               if (secondsRemaining <= 4) {
                 BeepPlayer.play(beep);
-                ///////////////////////////////////////////
-                //////////////////////////////////////////////
-                //////////////////////////////////////////////
-                //////////////////////////////////////////////
               }
               secondsRemaining--;
             });
@@ -266,7 +262,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
       } else
         intervalTimer?.cancel();
 
-      if (sets.isEmpty || sets[currentSetIndex].intervals.isEmpty) {
+      if (sets.isEmpty) {
         // No sets available, workout completed
         currentSetIndex = 0;
         currentIntervalIndex = 0;
@@ -285,8 +281,15 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
             ],
           ),
         );
-      } else if (currentIntervalIndex <
-          sets[currentSetIndex].intervals.length - 1) {
+        Wakelock.disable();
+      }
+
+      while (currentSetIndex < sets.length - 1 &&
+          sets[currentSetIndex + 1].intervals.isEmpty) {
+        currentSetIndex++;
+      }
+
+      if (currentIntervalIndex < sets[currentSetIndex].intervals.length - 1) {
         // Move to the next interval
         currentIntervalIndex++;
         startIntervalTimer();
@@ -506,33 +509,31 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
               SizedBox(height: 80),
               // Navigation buttons
               Center(
-                child: Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment
-                        .spaceEvenly, // Adjust the alignment as needed
-                    children: [
-                      IconButton(
-                        onPressed: navigateToPreviousSet,
-                        icon: Icon(Icons.skip_previous),
-                        color: primaryColor,
-                      ),
-                      IconButton(
-                        onPressed: navigateToPreviousInterval,
-                        icon: Icon(Icons.navigate_before),
-                        color: primaryColor,
-                      ),
-                      IconButton(
-                        onPressed: proceedToNextInterval,
-                        icon: Icon(Icons.navigate_next),
-                        color: primaryColor,
-                      ),
-                      IconButton(
-                        onPressed: navigateToNextSet,
-                        icon: Icon(Icons.skip_next),
-                        color: primaryColor,
-                      ),
-                    ],
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment
+                      .spaceEvenly, // Adjust the alignment as needed
+                  children: [
+                    IconButton(
+                      onPressed: navigateToPreviousSet,
+                      icon: Icon(Icons.skip_previous),
+                      color: primaryColor,
+                    ),
+                    IconButton(
+                      onPressed: navigateToPreviousInterval,
+                      icon: Icon(Icons.navigate_before),
+                      color: primaryColor,
+                    ),
+                    IconButton(
+                      onPressed: proceedToNextInterval,
+                      icon: Icon(Icons.navigate_next),
+                      color: primaryColor,
+                    ),
+                    IconButton(
+                      onPressed: navigateToNextSet,
+                      icon: Icon(Icons.skip_next),
+                      color: primaryColor,
+                    ),
+                  ],
                 ),
               ),
               // Set and Interval name

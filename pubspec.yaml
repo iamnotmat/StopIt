@@ -19,6 +19,7 @@ dependencies:
   google_fonts: ^5.1.0
   get_storage: ^2.1.1
   beep_player: ^0.0.1
+  flutter_launcher_icons: ^0.13.1
   wakelock: ^0.6.2
 
 dev_dependencies:
@@ -28,10 +29,11 @@ dev_dependencies:
     sdk: flutter
   lints: ^1.0.1
 
-flutter_icons:
-  android: true
+flutter_launcher_icons:
+  android: "launcher_icon"
   ios: true
   image_path: "assets/icons/AppIcon.png"
+  min_sdk_android: 21
 
 flutter:
   uses-material-design: true
