@@ -1,10 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'Save/save_workout.dart';
 import 'edit_workout.dart';
 import 'play.dart';
+import 'settings.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // List<Permission> permissions = [
+  //   Permission.storage,
+  //   Permission.microphone,
+  // ];
+
+  // // Request all the permissions
+  // Map<Permission, PermissionStatus> permissionStatus =
+  //     await permissions.request();
+
+  // // Check the status of each permission
+  // permissionStatus.forEach((permission, status) {
+  //   if (status.isGranted) {
+  //     print('${permission.toString()} is granted.');
+  //   } else {
+  //     print('${permission.toString()} is denied.');
+  //   }
+  // });
 
   await loadPersistant(workouts); // Load workouts from SharedPreferences
 
@@ -130,6 +150,17 @@ class _MainWidgetState extends State<MainWidget> {
     });
   }
 
+  void goSettings(BuildContext context) async {
+    // Wait for the settings page to be popped (when the user comes back)
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => SettingsPage()),
+    );
+
+    // Perform the refresh by calling setState
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -155,16 +186,16 @@ class _MainWidgetState extends State<MainWidget> {
                     height: 50,
                   ),
 
-                  // // Add your settings wheel widget here
-                  // IconButton(
-                  //   icon: Icon(
-                  //     Icons.settings,
-                  //     color: Colors.white,
-                  //   ),
-                  //   onPressed: () {
-                  //     // Handle settings button press
-                  //   },
-                  // ),
+                  // Add your settings wheel widget here
+                  IconButton(
+                    icon: Icon(
+                      Icons.settings,
+                      color: Colors.white,
+                    ),
+                    onPressed: () {
+                      goSettings(context);
+                    },
+                  ),
                 ],
               ),
             ),
@@ -206,7 +237,7 @@ class _MainWidgetState extends State<MainWidget> {
 }
 
 class Workout extends StatefulWidget {
-  final int Id;
+  int Id;
   String name;
   int index;
   final List<WorkoutSet> sets;
@@ -224,27 +255,58 @@ class Workout extends StatefulWidget {
 
   @override
   _WorkoutState createState() => _WorkoutState();
+
+  toJson() {
+    return {
+      'Id': Id,
+      'name': name,
+      'index': index,
+      'sets': sets,
+      'nextSetId': nextSetId,
+    };
+  }
+
+  static fromJson(Map<String, dynamic> data) {
+    return Workout(
+      key: UniqueKey(),
+      Id: data['Id'],
+      name: data['name'],
+      index: data['index'],
+      sets: List<WorkoutSet>.from(
+        data['sets'].map(
+          (set) => WorkoutSet.fromJson(set),
+        ),
+      ),
+      nextSetId: data['nextSetId'],
+    );
+  }
 }
 
 class _WorkoutState extends State<Workout> {
   bool isExpanded = false;
 
-  void editWorkout(BuildContext context, int index) {
-    Navigator.push(
+  void editWorkout(BuildContext context, int index) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => WorkoutDesignPage(workoutId: widget.Id),
       ),
     );
+
+    // Perform the refresh by calling setState
+    setState(() {});
   }
 
-  void playWorkout(BuildContext context, int index) {
-    Navigator.push(
+  void playWorkout(BuildContext context, int index) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => PlayWorkoutPage(workoutId: widget.Id),
       ),
     );
+
+    // Perform the refresh by calling setState
+    setState(() {});
   }
 
   void toggleExpansion() {
@@ -320,7 +382,29 @@ class _WorkoutState extends State<Workout> {
                         child: IconButton(
                           icon: Icon(Icons.play_arrow),
                           onPressed: () {
-                            playWorkout(context, widget.index);
+                            // If the first set has no intervals, don't play
+                            if (widget.sets[0].intervals.length == 0) {
+                              // Show an alert
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: Text('No Intervals'),
+                                  content: Text(
+                                      'Please add at least one interval to the first set.'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                      },
+                                      child: Text('OK'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              return;
+                            } else {
+                              playWorkout(context, widget.index);
+                            }
                           },
                         ),
                       ),

@@ -336,6 +336,7 @@ class _PlayWorkoutPageState extends State<PlayWorkoutPage> {
   void startWorkout() {
     currentSetIndex = 0;
     currentIntervalIndex = 0;
+
     Wakelock.enable();
     startIntervalTimer();
   }

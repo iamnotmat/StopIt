@@ -12,8 +12,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
   flutter_picker: ^2.0.1
+  permission_handler: ^10.4.3
+  path_provider: ^2.0.15
+  lecle_downloads_path_provider: ^0.0.2+8
+  file_picker: ^5.2.6
   porcupine_flutter: ^2.2.0
   path: ^1.8.0
   google_fonts: ^5.1.0

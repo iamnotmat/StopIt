@@ -109,6 +109,34 @@ class _WorkoutDesignPageState extends State<WorkoutDesignPage> {
                             set);
                       });
                     },
+                    duplicateSet: () {
+                      setState(() {
+                        final newSet = WorkoutSet(
+                          key: UniqueKey(),
+                          Id: workouts
+                              .firstWhere(
+                                  (workout) => workout.Id == widget.workoutId)
+                              .nextSetId,
+                          index: sets.length,
+                          name: set.name,
+                          repetitions: set.repetitions,
+                          intervals: set.intervals,
+                          nextIntervalId: set.nextIntervalId,
+                        );
+
+                        workouts
+                            .firstWhere(
+                                (workout) => workout.Id == widget.workoutId)
+                            .nextSetId++;
+
+                        sets.insert(set.index + 1, newSet);
+                        for (int i = 0; i < sets.length; i++) {
+                          sets[i].index = i;
+                        }
+                        savePersistant(workouts.firstWhere(
+                            (workout) => workout.Id == widget.workoutId));
+                      });
+                    },
                   ),
                 ))
             .values
@@ -184,9 +212,12 @@ class WorkoutSet {
 
   Map<String, dynamic> toJson() {
     return {
+      'Id': Id,
+      'index': index,
       'name': name,
       'intervals': intervals.map((interval) => interval.toJson()).toList(),
       'repetitions': repetitions,
+      'nextIntervalId': nextIntervalId,
     };
   }
 
@@ -205,12 +236,14 @@ class SetWidget extends StatefulWidget {
   final WorkoutSet set;
   final int workoutId; // Add the workoutId parameter
   final VoidCallback onDelete;
+  final VoidCallback duplicateSet;
 
   const SetWidget({
     this.key,
     required this.set,
     required this.workoutId, // Pass the workoutId parameter
     required this.onDelete,
+    required this.duplicateSet,
   });
 
   @override
@@ -240,39 +273,55 @@ class _SetWidgetState extends State<SetWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ListTile(
-            title: TextFormField(
-              controller: _nameController,
-              style: TextStyle(color: Colors.white),
-              onChanged: (value) {},
-              onEditingComplete: () {
-                setState(() {
-                  widget.set.name = _nameController.text;
-                  savePersistant(workouts
-                      .firstWhere((workout) => workout.Id == widget.workoutId));
-                });
-              },
-              decoration: InputDecoration(
-                labelText: 'Set Name',
-                labelStyle: TextStyle(color: Colors.white),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFFff0000)),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFFaf0404)),
-                  borderRadius: BorderRadius.circular(10),
+          Row(
+            children: [
+              Column(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.delete, color: Colors.white),
+                    onPressed: () {
+                      setState(() {
+                        widget.onDelete();
+                      });
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.copy, color: Colors.white),
+                    onPressed: () {
+                      setState(() {
+                        widget.duplicateSet();
+                      });
+                    },
+                  ),
+                ],
+              ),
+              Expanded(
+                child: TextFormField(
+                  controller: _nameController,
+                  style: TextStyle(color: Colors.white),
+                  onChanged: (value) {},
+                  onEditingComplete: () {
+                    setState(() {
+                      widget.set.name = _nameController.text;
+                      savePersistant(workouts.firstWhere(
+                          (workout) => workout.Id == widget.workoutId));
+                    });
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Set Name',
+                    labelStyle: TextStyle(color: Colors.white),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Color(0xFFff0000)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Color(0xFFaf0404)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                 ),
               ),
-            ),
-            trailing: IconButton(
-              icon: Icon(Icons.delete, color: Colors.white),
-              onPressed: () {
-                setState(() {
-                  widget.onDelete();
-                });
-              },
-            ),
+            ],
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
